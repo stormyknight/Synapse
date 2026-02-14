@@ -24,6 +24,7 @@ Begin building the Data Access Layer so GUI can load/save/search notes
 After the DAL is ready, start connecting GUI screens to real data.
 Continue working on the design document
 
+2/13/2026
 **Notes on Testing**
 All test files must start with "test_" or end with "_test" to be recognized as test files.
 All test functions must end with"_test" to be recognized as such.

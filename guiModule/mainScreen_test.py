@@ -1,3 +1,6 @@
+# Synapse
+# guiModule
+# mainScreen_test.py
 from pytestqt.qt_compat import qt_api
 import mainScreen
 
