@@ -9,5 +9,5 @@ def test_EditableContentText(qtbot):
     qtbot.keyClicks(testMainScreen.editableContentText, "It worked")
 
     assert (
-        testMainScreen.editableContentText.toPlainText() == "I tworked"
+        testMainScreen.editableContentText.toPlainText() == "It worked"
     ), "Text typed into editableContentText does not match expected text"

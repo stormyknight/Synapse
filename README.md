@@ -23,3 +23,9 @@ Update the system model diagram to include TTS and finalized LLM choice
 Begin building the Data Access Layer so GUI can load/save/search notes
 After the DAL is ready, start connecting GUI screens to real data.
 Continue working on the design document
+
+**Notes on Testing**
+All test files must start with "test_" or end with "_test" to be recognized as test files.
+All test functions must end with"_test" to be recognized as such.
+Need to install "install pytest pytest-qt PyQt5" for tests to work.
+Must close out graphics window to complete test
