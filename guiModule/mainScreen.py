@@ -3,6 +3,7 @@
 # notesScreen.py
 from PyQt5.QtWidgets import QApplication, QWidget, QTextEdit, QVBoxLayout
 from PyQt5.QtGui import QFont
+from pytestqt.qt_compat import qt_api
 
 
 # Window for notes and homepage
