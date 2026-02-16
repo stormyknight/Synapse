@@ -33,3 +33,11 @@ Must close out graphics window to complete test.\
 2/15/2026
 To get test coverage install pytest-cov and run "pytest --cov=.
 To get an interactive html of coverage run "pytest --cov=. --cov-report=html"
+
+2/15/2026
+**Notes on the Linter(s)**
+mypy, ruff, and pylint all need to be installed. Run "mypy ./src", "ruff check", and "pylint ./src" respectively
+
+2/15/2026
+**Notes on the pre-commit hook**
+install pre-commit then run "pre-commit install" or "pre_commit install", whichever works
