@@ -1,2 +1,2 @@
 .coverage
-./src/guiModule/__pycache__
+htmlcov/
