@@ -24,7 +24,7 @@ def connect_db(db_name: str) -> sqlite3.Connection:
     return conn
 
 
-def create_database():
+def create_database()->None:
     """Initialize the Synapse database with all required tables"""
 
     # Remove old database if it exists (for fresh setup)
@@ -448,7 +448,7 @@ Reminder to self: Take breaks and celebrate small wins.""",
     print("\nReady to start building Synapse!\n")
 
 
-def verify_database():
+def verify_database()->None:
     """Verify database structure and display sample data"""
 
     if not os.path.exists(DATABASE_NAME):

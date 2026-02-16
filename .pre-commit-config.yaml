@@ -1,0 +1,17 @@
+repos:
+- repo: https://github.com/PyCQA/pylint
+  rev: v4.0.4 # Use a relevant version
+  hooks:
+    - id: pylint
+      args: ["--rcfile=.pylintrc"] # Optional: specify your pylint configuration file
+      # Pylint can be slow, consider setting 'require_serial: true' if performance
+      # and correctness are more important than parallelization on a large project
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.15.1
+  hooks:
+    - id: ruff
+      args: []
+-   repo: https://github.com/pre-commit/mirrors-mypy
+    rev: ''  # Use the sha / tag you want to point at
+    hooks:
+    -   id: mypy

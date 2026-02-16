@@ -3,12 +3,11 @@
 # mainScreen.py
 from PyQt5.QtWidgets import QApplication, QWidget, QTextEdit, QVBoxLayout
 from PyQt5.QtGui import QFont
-from pytestqt.qt_compat import qt_api
 
 
 # Window for notes and homepage
-class MainWindow(QWidget):
-    def __init__(self):
+class MainWindow(QWidget): # type: ignore
+    def __init__(self)->None:
         super().__init__()
 
         # Setting main window size and background color
