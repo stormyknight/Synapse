@@ -4,6 +4,8 @@
 
 # pylint: disable=invalid-name
 import mainScreen
+from pytestqt import *
+
 
 
 # Test to see if the user can type in editableContentText
