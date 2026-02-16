@@ -40,4 +40,6 @@ mypy, ruff, and pylint all need to be installed. Run "mypy ./src", "ruff check",
 
 2/15/2026
 **Notes on the pre-commit hook**
-install pre-commit then run "pre-commit install" or "pre_commit install", whichever works
+The pre-commit hook is what allows the linter to run before the commit goes through.
+It can be overriden by the "--no-verify" tag.
+Install pre-commit then run "pre-commit install" or "pre_commit install", whichever works
