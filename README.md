@@ -29,4 +29,7 @@ Continue working on the design document
 All test files must start with "test_" or end with "_test" to be recognized as test files.
 All test functions must end with"_test" to be recognized as such.
 Need to install "install pytest pytest-qt PyQt5" for tests to work.
-Must close out graphics window to complete test
+Must close out graphics window to complete test.
+\n2/15/2026
+To get test coverage install pytest-cov and run "pytest --cov=.
+To get an interactive html of coverage run "pytest --cov=. --cov-report=html"
