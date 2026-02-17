@@ -21,10 +21,16 @@ class MainWindow(QWidget): # type: ignore
         contentFont: QFont = QFont("Arial", 13)
         self.editableContentText.setFont(contentFont)
 
+#font size 
+
         # Creating a vertical box layout to format elements
         windowElementLayout: QVBoxLayout = QVBoxLayout(self)
 
         # Adding the textedit into the layout
+    
+        
+        
+        
         windowElementLayout.addWidget(self.editableContentText)
 
         self.setLayout(windowElementLayout)
