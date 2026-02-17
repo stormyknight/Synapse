@@ -1,0 +1,19 @@
+[MAIN]
+ignore=setup_databse.py
+
+[BASIC]
+variable-naming-style=camelCase
+function-naming-style=camelCase
+const-naming-style=camelCase
+module-naming-style=camelCase
+attr-naming-style=camelCase
+
+
+[Message-Control]
+disable =
+    line-too-long,
+    missing-docstring, 
+    no-name-in-module,
+    too-few-public-methods,
+    import-error
+

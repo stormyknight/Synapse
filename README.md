@@ -29,4 +29,17 @@ Continue working on the design document
 All test files must start with "test_" or end with "_test" to be recognized as test files.
 All test functions must end with"_test" to be recognized as such.
 Need to install "install pytest pytest-qt PyQt5" for tests to work.
-Must close out graphics window to complete test
+Must close out graphics window to complete test.\
+2/15/2026
+To get test coverage install pytest-cov and run "pytest --cov=.
+To get an interactive html of coverage run "pytest --cov=. --cov-report=html"
+
+2/15/2026
+**Notes on the Linter(s)**
+mypy, ruff, and pylint all need to be installed. Run "mypy ./src", "ruff check", and "pylint ./src" respectively
+
+2/15/2026
+**Notes on the pre-commit hook**
+The pre-commit hook is what allows the linter to run before the commit goes through.
+It can be overriden by the "--no-verify" tag.
+Install pre-commit then run "pre-commit install" or "pre_commit install", whichever works
