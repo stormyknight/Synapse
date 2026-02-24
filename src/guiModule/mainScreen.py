@@ -1,7 +1,7 @@
 # Synapse
 # guiModule
 # mainScreen.py
-from PyQt5.QtWidgets import QApplication, QWidget, QTextEdit, QVBoxLayout
+from PyQt5.QtWidgets import QApplication, QWidget, QTextEdit, QVBoxLayout, QLabel, QLineEdit
 from PyQt5.QtGui import QFont
 
 
@@ -21,15 +21,19 @@ class MainWindow(QWidget): # type: ignore
         contentFont: QFont = QFont("Arial", 13)
         self.editableContentText.setFont(contentFont)
 
-#font size 
+        self.folder_input = QLineEdit()
+        self.folder_input.setStyleSheet("border: None")
+        folderFont: QFont = QFont("Arial", 40)
+        self.folder_input.setFont(folderFont)
 
         # Creating a vertical box layout to format elements
         windowElementLayout: QVBoxLayout = QVBoxLayout(self)
 
-        # Adding the textedit into the layout
-    
-        
-        
+        windowElementLayout.addWidget(QLabel("Folder Name:"))
+        self.folder_input = QLineEdit()
+        self.folder_input.setPlaceholderText("Enter folder name...")
+        windowElementLayout.addWidget(self.folder_input)
+
         
         windowElementLayout.addWidget(self.editableContentText)
 
@@ -42,3 +46,4 @@ window: MainWindow = MainWindow()
 window.show()
 
 app.exec()
+# to run: python3 -u "/Users/jessekemmer/Downloads/codes/Synapse/src/guiModule/mainScreen.py"
