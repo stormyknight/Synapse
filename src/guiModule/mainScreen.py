@@ -1,13 +1,51 @@
 # Synapse
 # guiModule
 # mainScreen.py
-from PyQt5.QtWidgets import QApplication, QWidget, QTextEdit, QVBoxLayout
+
+from __future__ import annotations
+
+import os
+import sqlite3
+from datetime import datetime
+
 from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import (
+    QApplication,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
+
+DATABASE_NAME = "synapse.db"
+
+
+def connectDb(dbPath: str) -> sqlite3.Connection:
+    """Connect to SQLite and enforce foreign keys."""
+    conn = sqlite3.connect(dbPath)
+    conn.execute("PRAGMA foreign_keys = ON;")
+    return conn
+
+
+def addNote(cursor: sqlite3.Cursor, title: str, content: str, source: str) -> int:
+    """Insert a note into the notes table and return new note id."""
+    cursor.execute(
+        """
+        INSERT INTO notes (title, content, source)
+        VALUES (?, ?, ?)
+        """,
+        (title, content, source),
+    )
+    return int(cursor.lastrowid)
 
 
 # Window for notes and homepage
-class MainWindow(QWidget): # type: ignore
-    def __init__(self)->None:
+class MainWindow(QWidget):
+    def __init__(self) -> None:
         super().__init__()
 
         # Setting main window size and background color
@@ -15,24 +53,92 @@ class MainWindow(QWidget): # type: ignore
         self.resize(1400, 1200)
         self.setStyleSheet("background-color: #A5F3FF;")
 
+        # Title row
+        self.titleLabel = QLabel("Title:")
+        self.titleInput = QLineEdit()
+        self.titleInput.setPlaceholderText("Enter a note title...")
+
+        titleRowLayout = QHBoxLayout()
+        titleRowLayout.addWidget(self.titleLabel)
+        titleRowLayout.addWidget(self.titleInput)
+
         # Creating the content textedit and setting font and removing border
         self.editableContentText = QTextEdit()
-        self.editableContentText.setStyleSheet("border: None")
+        self.editableContentText.setStyleSheet("border: None;")
         contentFont: QFont = QFont("Arial", 13)
         self.editableContentText.setFont(contentFont)
+
+        # Save + status row
+        self.saveButton = QPushButton("Save")
+        self.saveButton.clicked.connect(self.onSaveClicked)
+
+        self.statusLabel = QLabel("")
+        statusRowLayout = QHBoxLayout()
+        statusRowLayout.addWidget(self.saveButton)
+        statusRowLayout.addStretch(1)
+        statusRowLayout.addWidget(self.statusLabel)
 
         # Creating a vertical box layout to format elements
         windowElementLayout: QVBoxLayout = QVBoxLayout(self)
 
-        # Adding the textedit into the layout
+        windowElementLayout.addLayout(titleRowLayout)
         windowElementLayout.addWidget(self.editableContentText)
+        windowElementLayout.addLayout(statusRowLayout)
 
         self.setLayout(windowElementLayout)
 
+    def getDbPath(self) -> str:
+        """Resolve DB path relative to current working directory."""
+        return os.path.join(os.getcwd(), DATABASE_NAME)
 
-# creating PyQT5 App, adding window, and showing window
-app: QApplication = QApplication([])
-window: MainWindow = MainWindow()
-window.show()
+    def makeDefaultTitle(self) -> str:
+        """Create a default title when none is given."""
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+        return f"Untitled Note ({timestamp})"
 
-app.exec()
+    def onSaveClicked(self) -> None:
+        """Save current note contents into synapse.db."""
+        title = self.titleInput.text().strip()
+        if not title:
+            title = self.makeDefaultTitle()
+
+        content = self.editableContentText.toPlainText().strip()
+        if not content:
+            QMessageBox.warning(self, "Cannot Save", "Note content is required.")
+            return
+
+        dbPath = self.getDbPath()
+        if not os.path.exists(dbPath):
+            QMessageBox.critical(
+                self,
+                "Database Missing",
+                f"Database '{DATABASE_NAME}' not found.\nRun setup_database.py first.",
+            )
+            self.statusLabel.setText("Save failed")
+            return
+
+        try:
+            conn = connectDb(dbPath)
+            try:
+                cursor = conn.cursor()
+                noteId = addNote(cursor, title, content, "gui")
+                conn.commit()
+            finally:
+                conn.close()
+
+            self.statusLabel.setText(f"Saved (id={noteId})")
+        except sqlite3.Error as exc:
+            QMessageBox.critical(self, "Database Error", f"SQLite error:\n{exc}")
+            self.statusLabel.setText("Save failed")
+
+
+def runApp() -> int:
+    """Create and run the PyQt application."""
+    app: QApplication = QApplication([])
+    window: MainWindow = MainWindow()
+    window.show()
+    return int(app.exec())
+
+
+if __name__ == "__main__":
+    raise SystemExit(runApp())
