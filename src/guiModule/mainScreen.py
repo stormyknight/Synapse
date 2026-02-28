@@ -5,12 +5,11 @@
 from __future__ import annotations
 
 import os
-import sqlite3
 from datetime import datetime
-import math
+import sqlite3
 
 from PyQt5.QtGui import QFont, QIcon
-from PyQt5.QtCore import QSize
+from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -20,28 +19,10 @@ from PyQt5.QtWidgets import (
     QTextEdit,
     QVBoxLayout,
     QWidget,)
-from PyQt5.QtCore import Qt
+
+from src.databaseModule import generalDbFunctions, noteDbFunctions
 
 databaseName = "synapse.db"
-
-
-def connectDb(dbPath: str) -> sqlite3.Connection:
-    """Connect to SQLite and enforce foreign keys."""
-    conn = sqlite3.connect(dbPath)
-    conn.execute("PRAGMA foreign_keys = ON;")
-    return conn
-
-
-def addNote(cursor: sqlite3.Cursor, title: str, content: str, source: str) -> int:
-    """Insert a note into the notes table and return new note id."""
-    cursor.execute(
-        """
-        INSERT INTO notes (title, content, source)
-        VALUES (?, ?, ?)
-        """,
-        (title, content, source),
-    )
-    return cursor.lastrowid if cursor.lastrowid is not None else int(math.nan)
 
 
 # Window for notes and homepage
@@ -104,10 +85,6 @@ class MainWindow(QWidget): # type: ignore
             newHeight: int = int(docHeight + 10)  # padding
             self.titleInput.setFixedHeight(newHeight)
 
-    def getDbPath(self) -> str:
-        """Resolve DB path relative to current working directory."""
-        return os.path.join(os.getcwd(), databaseName)
-
     def makeDefaultTitle(self) -> str:
         """Create a default title when none is given."""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -124,7 +101,7 @@ class MainWindow(QWidget): # type: ignore
             QMessageBox.warning(self, "Cannot Save", "Note content is required.")
             return
 
-        dbPath = self.getDbPath()
+        dbPath = generalDbFunctions.getDbPath(databaseName)
         if not os.path.exists(dbPath):
             QMessageBox.critical(
                 self,
@@ -135,10 +112,10 @@ class MainWindow(QWidget): # type: ignore
             return
 
         try:
-            conn = connectDb(dbPath)
+            conn = generalDbFunctions.connectDb(dbPath)
             try:
                 cursor = conn.cursor()
-                noteId = addNote(cursor, title, content, "gui")
+                noteId = noteDbFunctions.addNote(cursor, title, content, "gui")
                 conn.commit()
             finally:
                 conn.close()
