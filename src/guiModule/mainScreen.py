@@ -7,21 +7,22 @@ from __future__ import annotations
 import os
 import sqlite3
 from datetime import datetime
+import math
 
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QIcon
+from PyQt5.QtCore import QSize
 from PyQt5.QtWidgets import (
     QApplication,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QMessageBox,
     QPushButton,
     QTextEdit,
     QVBoxLayout,
-    QWidget,
-)
+    QWidget,)
+from PyQt5.QtCore import Qt
 
-DATABASE_NAME = "synapse.db"
+databaseName = "synapse.db"
 
 
 def connectDb(dbPath: str) -> sqlite3.Connection:
@@ -40,27 +41,34 @@ def addNote(cursor: sqlite3.Cursor, title: str, content: str, source: str) -> in
         """,
         (title, content, source),
     )
-    return int(cursor.lastrowid)
+    return cursor.lastrowid if cursor.lastrowid is not None else int(math.nan)
 
 
 # Window for notes and homepage
-class MainWindow(QWidget):
+class MainWindow(QWidget): # type: ignore
     def __init__(self) -> None:
         super().__init__()
 
         # Setting main window size and background color
         self.setWindowTitle("Synapse")
         self.resize(1400, 1200)
+        self.setMinimumSize(500,400)
         self.setStyleSheet("background-color: #A5F3FF;")
 
-        # Title row
-        self.titleLabel = QLabel("Title:")
-        self.titleInput = QLineEdit()
-        self.titleInput.setPlaceholderText("Enter a note title...")
+        # Title row and setting title font
+        self.titleInput: QTextEdit = QTextEdit()
+        titleFont: QFont = QFont("Arial", 26)
+        self.titleInput.setStyleSheet("border: None;")
 
-        titleRowLayout = QHBoxLayout()
-        titleRowLayout.addWidget(self.titleLabel)
-        titleRowLayout.addWidget(self.titleInput)
+        # Disable Scroll bars
+        self.titleInput.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.titleInput.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        # Start as one line tall
+        self.titleInput.setFixedHeight(75)
+        # Expand when text changes
+        self.titleInput.textChanged.connect(self.adjustTitleHeight)
+        self.titleInput.setFont(titleFont)
 
         # Creating the content textedit and setting font and removing border
         self.editableContentText = QTextEdit()
@@ -69,7 +77,10 @@ class MainWindow(QWidget):
         self.editableContentText.setFont(contentFont)
 
         # Save + status row
-        self.saveButton = QPushButton("Save")
+        self.saveButton = QPushButton("")
+        self.saveButton.setIcon(QIcon("saveIcon.png"))
+        self.saveButton.setIconSize(QSize(40,40))
+        self.saveButton.setStyleSheet("border: none;")
         self.saveButton.clicked.connect(self.onSaveClicked)
 
         self.statusLabel = QLabel("")
@@ -81,15 +92,21 @@ class MainWindow(QWidget):
         # Creating a vertical box layout to format elements
         windowElementLayout: QVBoxLayout = QVBoxLayout(self)
 
-        windowElementLayout.addLayout(titleRowLayout)
-        windowElementLayout.addWidget(self.editableContentText)
         windowElementLayout.addLayout(statusRowLayout)
+        windowElementLayout.addWidget(self.titleInput)
+        windowElementLayout.addWidget(self.editableContentText)
 
         self.setLayout(windowElementLayout)
 
+    def adjustTitleHeight(self)->None:
+        if self.titleInput.document() is not None:
+            docHeight: float = self.titleInput.document().size().height()
+            newHeight: int = int(docHeight + 10)  # padding
+            self.titleInput.setFixedHeight(newHeight)
+
     def getDbPath(self) -> str:
         """Resolve DB path relative to current working directory."""
-        return os.path.join(os.getcwd(), DATABASE_NAME)
+        return os.path.join(os.getcwd(), databaseName)
 
     def makeDefaultTitle(self) -> str:
         """Create a default title when none is given."""
@@ -98,7 +115,7 @@ class MainWindow(QWidget):
 
     def onSaveClicked(self) -> None:
         """Save current note contents into synapse.db."""
-        title = self.titleInput.text().strip()
+        title = self.titleInput.toPlainText().strip()
         if not title:
             title = self.makeDefaultTitle()
 
@@ -112,7 +129,7 @@ class MainWindow(QWidget):
             QMessageBox.critical(
                 self,
                 "Database Missing",
-                f"Database '{DATABASE_NAME}' not found.\nRun setup_database.py first.",
+                f"Database '{databaseName}' not found.\nRun setup_database.py first.",
             )
             self.statusLabel.setText("Save failed")
             return
