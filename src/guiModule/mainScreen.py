@@ -4,10 +4,6 @@
 
 from __future__ import annotations
 
-import os
-from datetime import datetime
-import sqlite3
-
 from PyQt5.QtGui import QFont, QIcon
 from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtWidgets import (
@@ -20,8 +16,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,)
 
-from src.databaseModule import generalDbFunctions, noteDbFunctions
-
+from src.logicModule import noteLogic
 databaseName = "synapse.db"
 
 
@@ -62,7 +57,7 @@ class MainWindow(QWidget): # type: ignore
         self.saveButton.setIcon(QIcon("saveIcon.png"))
         self.saveButton.setIconSize(QSize(40,40))
         self.saveButton.setStyleSheet("border: none;")
-        self.saveButton.clicked.connect(self.onSaveClicked)
+        self.saveButton.clicked.connect(self.onSaveNoteClicked)
 
         self.statusLabel = QLabel("")
         statusRowLayout = QHBoxLayout()
@@ -79,51 +74,31 @@ class MainWindow(QWidget): # type: ignore
 
         self.setLayout(windowElementLayout)
 
+    # Adjusts height of title to so title will wrap as size changes
     def adjustTitleHeight(self)->None:
         if self.titleInput.document() is not None:
             docHeight: float = self.titleInput.document().size().height()
             newHeight: int = int(docHeight + 10)  # padding
             self.titleInput.setFixedHeight(newHeight)
 
-    def makeDefaultTitle(self) -> str:
-        """Create a default title when none is given."""
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-        return f"Untitled Note ({timestamp})"
+    def resizeEvent(self, event)->None: # type: ignore
+        # This method is called whenever the window is resized
+        self.adjustTitleHeight()
+        # Call the base class implementation
+        QWidget.resizeEvent(self, event)
 
-    def onSaveClicked(self) -> None:
-        """Save current note contents into synapse.db."""
-        title = self.titleInput.toPlainText().strip()
-        if not title:
-            title = self.makeDefaultTitle()
-
-        content = self.editableContentText.toPlainText().strip()
-        if not content:
-            QMessageBox.warning(self, "Cannot Save", "Note content is required.")
-            return
-
-        dbPath = generalDbFunctions.getDbPath(databaseName)
-        if not os.path.exists(dbPath):
+    # This method calls the logic for saving on note and updates the GUI accordingly
+    def onSaveNoteClicked(self) -> None:
+        saveResult: dict[str, str] | str =noteLogic.onNoteSaveClicked(self.titleInput.toPlainText().strip(), self.editableContentText.toPlainText().strip(), databaseName)
+        if type(saveResult) is not str and type(saveResult) is dict: # pylint: disable=unidiomatic-typecheck
             QMessageBox.critical(
                 self,
-                "Database Missing",
-                f"Database '{databaseName}' not found.\nRun setup_database.py first.",
+                saveResult["title"],
+                saveResult["msg"],
             )
             self.statusLabel.setText("Save failed")
-            return
-
-        try:
-            conn = generalDbFunctions.connectDb(dbPath)
-            try:
-                cursor = conn.cursor()
-                noteId = noteDbFunctions.addNote(cursor, title, content, "gui")
-                conn.commit()
-            finally:
-                conn.close()
-
-            self.statusLabel.setText(f"Saved (id={noteId})")
-        except sqlite3.Error as exc:
-            QMessageBox.critical(self, "Database Error", f"SQLite error:\n{exc}")
-            self.statusLabel.setText("Save failed")
+        else:
+            self.statusLabel.setText(saveResult)
 
 
 def runApp() -> int:
