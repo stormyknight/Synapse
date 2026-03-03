@@ -3,6 +3,7 @@
 # mainScreen.py
 
 from __future__ import annotations
+from enum import Enum
 
 from PyQt5.QtGui import QFont, QIcon
 from PyQt5.QtCore import QSize, Qt
@@ -23,8 +24,16 @@ from src.logicModule import noteLogic
 databaseName = "synapse.db"
 
 
+# To keep track of page
+class Page(Enum):
+    HOME = 0
+    NOTE = 1
+
+
 # Window for notes and homepage
 class MainWindow(QWidget): # type: ignore
+    page: Page = Page.NOTE
+
     def __init__(self) -> None:
         super().__init__()
 
@@ -69,13 +78,15 @@ class MainWindow(QWidget): # type: ignore
         statusRowLayout.addWidget(self.statusLabel)
 
         # Creating a vertical box layout to format elements
-        windowElementLayout: QVBoxLayout = QVBoxLayout(self)
+        noteWindowElementLayout: QVBoxLayout = QVBoxLayout(self)
 
-        windowElementLayout.addLayout(statusRowLayout)
-        windowElementLayout.addWidget(self.titleInput)
-        windowElementLayout.addWidget(self.editableContentText)
+        # determines what will be displayed for the page
+        if self.page == Page.NOTE:
+            noteWindowElementLayout.addLayout(statusRowLayout)
+            noteWindowElementLayout.addWidget(self.titleInput)
+            noteWindowElementLayout.addWidget(self.editableContentText)
 
-        self.setLayout(windowElementLayout)
+            self.setLayout(noteWindowElementLayout)
 
     # Adjusts height of title to so title will wrap as size changes
     def adjustTitleHeight(self)->None:
