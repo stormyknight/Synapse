@@ -16,7 +16,10 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,)
 
+
 from src.logicModule import noteLogic
+
+
 databaseName = "synapse.db"
 
 
@@ -86,6 +89,7 @@ class MainWindow(QWidget): # type: ignore
         self.adjustTitleHeight()
         # Call the base class implementation
         QWidget.resizeEvent(self, event)
+        print(type(event))
 
     # This method calls the logic for saving on note and updates the GUI accordingly
     def onSaveNoteClicked(self) -> None:
