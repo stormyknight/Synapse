@@ -3,6 +3,7 @@
 # mainScreen.py
 
 from __future__ import annotations
+from enum import Enum
 
 from PyQt5.QtGui import QFont, QIcon
 from PyQt5.QtCore import QSize, Qt
@@ -14,13 +15,19 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QTextEdit,
     QVBoxLayout,
-    QWidget,)
+    QWidget,
+    QStackedLayout)
 
 
 from src.logicModule import noteLogic
 
 
 databaseName = "synapse.db"
+
+
+class Page(Enum):
+    HOME = 0
+    NOTE = 1
 
 
 # Window for notes and homepage
@@ -34,12 +41,18 @@ class MainWindow(QWidget): # type: ignore
         self.setMinimumSize(500,400)
         self.setStyleSheet("background-color: #A5F3FF;")
 
-        # Title row and setting title font
+        # Create Stacked Widget for holding multple pages
+        self.stackedLayout: QStackedLayout = QStackedLayout()
+
+        # Create note page
+        self.notePage:QWidget = QWidget()
+
+        # Title row and setting title font for note page
         self.titleInput: QTextEdit = QTextEdit()
         titleFont: QFont = QFont("Arial", 26)
         self.titleInput.setStyleSheet("border: None;")
 
-        # Disable Scroll bars
+        # Disable Scroll bars for note page title
         self.titleInput.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.titleInput.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
@@ -49,13 +62,13 @@ class MainWindow(QWidget): # type: ignore
         self.titleInput.textChanged.connect(self.adjustTitleHeight)
         self.titleInput.setFont(titleFont)
 
-        # Creating the content textedit and setting font and removing border
+        # Creating the content textedit and setting font and removing border for note page
         self.editableContentText = QTextEdit()
         self.editableContentText.setStyleSheet("border: None;")
         contentFont: QFont = QFont("Arial", 13)
         self.editableContentText.setFont(contentFont)
 
-        # Save + status row
+        # Save + status row for note page
         self.saveButton = QPushButton("")
         self.saveButton.setIcon(QIcon("saveIcon.png"))
         self.saveButton.setIconSize(QSize(40,40))
@@ -68,14 +81,26 @@ class MainWindow(QWidget): # type: ignore
         statusRowLayout.addStretch(1)
         statusRowLayout.addWidget(self.statusLabel)
 
-        # Creating a vertical box layout to format elements
-        windowElementLayout: QVBoxLayout = QVBoxLayout(self)
+        # Creating a vertical box layout to format note elements for note page
+        noteWindowElementLayout: QVBoxLayout = QVBoxLayout()
+        noteWindowElementLayout.addLayout(statusRowLayout)
+        noteWindowElementLayout.addWidget(self.titleInput)
+        noteWindowElementLayout.addWidget(self.editableContentText)
 
-        windowElementLayout.addLayout(statusRowLayout)
-        windowElementLayout.addWidget(self.titleInput)
-        windowElementLayout.addWidget(self.editableContentText)
+        self.notePage.setLayout(noteWindowElementLayout)
 
-        self.setLayout(windowElementLayout)
+        # Create Home Page
+        self.homePage:QWidget = QWidget()
+
+        # adding pages to stacked layout
+        self.stackedLayout.addWidget(self.homePage)
+        self.stackedLayout.addWidget(self.notePage)
+
+        # adding stacked layout to mainScreen
+        self.setLayout(self.stackedLayout)
+
+        # Setting to note page. For now manually change page Index
+        self.stackedLayout.setCurrentIndex(Page.NOTE.value)
 
     # Adjusts height of title to so title will wrap as size changes
     def adjustTitleHeight(self)->None:
