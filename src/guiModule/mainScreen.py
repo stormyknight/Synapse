@@ -32,6 +32,7 @@ class Page(Enum):
 
 # Window for notes and homepage
 class MainWindow(QWidget): # type: ignore
+    # Determines what page the app is on. For now change manually to see different pages
     page: Page = Page.NOTE
 
     def __init__(self) -> None:
@@ -78,15 +79,15 @@ class MainWindow(QWidget): # type: ignore
         statusRowLayout.addWidget(self.statusLabel)
 
         # Creating a vertical box layout to format elements
-        noteWindowElementLayout: QVBoxLayout = QVBoxLayout(self)
+        windowElementLayout: QVBoxLayout = QVBoxLayout(self)
 
         # determines what will be displayed for the page
         if self.page == Page.NOTE:
-            noteWindowElementLayout.addLayout(statusRowLayout)
-            noteWindowElementLayout.addWidget(self.titleInput)
-            noteWindowElementLayout.addWidget(self.editableContentText)
+            windowElementLayout.addLayout(statusRowLayout)
+            windowElementLayout.addWidget(self.titleInput)
+            windowElementLayout.addWidget(self.editableContentText)
 
-            self.setLayout(noteWindowElementLayout)
+        self.setLayout(windowElementLayout)
 
     # Adjusts height of title to so title will wrap as size changes
     def adjustTitleHeight(self)->None:
