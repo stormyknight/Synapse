@@ -63,29 +63,29 @@ class MainWindow(QWidget): # type: ignore
         self.titleInput.setFont(titleFont)
 
         # Creating the content textedit and setting font and removing border for note page
-        editableContentText = QTextEdit()
-        editableContentText.setStyleSheet("border: None;")
+        self.editableContentText = QTextEdit()
+        self.editableContentText.setStyleSheet("border: None;")
         contentFont: QFont = QFont("Arial", 13)
-        editableContentText.setFont(contentFont)
+        self.editableContentText.setFont(contentFont)
 
         # Save + status row for note page
-        saveButton = QPushButton("")
-        saveButton.setIcon(QIcon("saveIcon.png"))
-        saveButton.setIconSize(QSize(40,40))
-        saveButton.setStyleSheet("border: none;")
-        saveButton.clicked.connect(self.onSaveNoteClicked)
+        self.saveButton = QPushButton("")
+        self.saveButton.setIcon(QIcon("saveIcon.png"))
+        self.saveButton.setIconSize(QSize(40,40))
+        self.saveButton.setStyleSheet("border: none;")
+        self.saveButton.clicked.connect(self.onSaveNoteClicked)
 
-        statusLabel = QLabel("")
+        self.statusLabel = QLabel("")
         statusRowLayout = QHBoxLayout()
-        statusRowLayout.addWidget(saveButton)
+        statusRowLayout.addWidget(self.saveButton)
         statusRowLayout.addStretch(1)
-        statusRowLayout.addWidget(statusLabel)
+        statusRowLayout.addWidget(self.statusLabel)
 
         # Creating a vertical box layout to format note elements for note page
         noteWindowElementLayout: QVBoxLayout = QVBoxLayout()
         noteWindowElementLayout.addLayout(statusRowLayout)
         noteWindowElementLayout.addWidget(self.titleInput)
-        noteWindowElementLayout.addWidget(editableContentText)
+        noteWindowElementLayout.addWidget(self.editableContentText)
 
         self.notePage.setLayout(noteWindowElementLayout)
 
