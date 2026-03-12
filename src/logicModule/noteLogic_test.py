@@ -1,3 +1,6 @@
+# Synapse
+# logicModule
+# noteLogic_test.py
 # pylint: disable=invalid-name
 import sqlite3
 from typing import Any
