@@ -1,7 +1,7 @@
 # Synapse
 # guiModule
 # mainScreen.py
-from PyQt5.QtWidgets import QApplication, QWidget, QTextEdit, QVBoxLayout, QLabel, QLineEdit
+from PyQt5.QtWidgets import QApplication, QWidget, QTextEdit, QVBoxLayout, QLabel, QLineEdit, QPushButton
 from PyQt5.QtGui import QFont
 
 
@@ -34,10 +34,21 @@ class MainWindow(QWidget): # type: ignore
         self.folder_input.setPlaceholderText("Enter folder name...")
         windowElementLayout.addWidget(self.folder_input)
 
-        
+        # Creating exit button to return to main screen
+        self.exitButton = QPushButton("← Back to Main")
+        self.exitButton.setStyleSheet("border: None; text-align: left;")
+        exitFont: QFont = QFont("Arial", 13)
+        self.exitButton.setFont(exitFont)
+        self.exitButton.clicked.connect(self.goToMainScreen)
+        windowElementLayout.addWidget(self.exitButton)
+
         windowElementLayout.addWidget(self.editableContentText)
 
         self.setLayout(windowElementLayout)
+
+    def goToMainScreen(self) -> None:
+        self.folder_input.clear()
+        self.editableContentText.clear()
 
 
 # creating PyQT5 App, adding window, and showing window
@@ -46,4 +57,5 @@ window: MainWindow = MainWindow()
 window.show()
 
 app.exec()
+
 # to run: python3 -u "/Users/jessekemmer/Downloads/codes/Synapse/src/guiModule/mainScreen.py"
