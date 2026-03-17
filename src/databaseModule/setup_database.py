@@ -1,3 +1,6 @@
+# Synapse
+# databaseModule
+# setup_database.py
 """
 Synapse - Smart Journal Database Setup
 ======================================
