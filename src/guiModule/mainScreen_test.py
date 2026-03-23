@@ -73,3 +73,17 @@ def test_resizeEvent()->None:
     testMainScreen.adjustTitleHeight=MagicMock()
     testMainScreen.resizeEvent(testEvent)
     testMainScreen.adjustTitleHeight.assert_called()
+
+
+# pylint: disable=invalid-name
+def test_goToMainScreen()->None:
+    testMainScreen: mainScreen.MainWindow = mainScreen.MainWindow()
+    testMainScreen.goToMainScreen()
+    assert  not testMainScreen.saveButton.isVisible()
+
+
+# pylint: disable=invalid-name
+def test_exitButton()->None:
+    testMainScreen: mainScreen.MainWindow = mainScreen.MainWindow()
+    testMainScreen.exitButton.click()
+    assert  not testMainScreen.saveButton.isVisible()

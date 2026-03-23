@@ -62,14 +62,14 @@ class MainWindow(QWidget): # type: ignore
         # Expand when text changes
         self.titleInput.textChanged.connect(self.adjustTitleHeight)
         self.titleInput.setFont(titleFont)
-        
-            # Creating exit button to return to main screen
-        self.exitButton = QPushButton("← Back to Main")
+
+        # Creating exit button to return to main screen
+        self.exitButton: QPushButton = QPushButton()
+        self.exitButton.setIcon(QIcon("backIcon"))
         self.exitButton.setStyleSheet("border: None; text-align: left;")
         exitFont: QFont = QFont("Arial", 13)
         self.exitButton.setFont(exitFont)
         self.exitButton.clicked.connect(self.goToMainScreen)
-
 
         # Creating the content textedit and setting font and removing border for note page
         self.editableContentText = QTextEdit()
@@ -77,10 +77,10 @@ class MainWindow(QWidget): # type: ignore
         contentFont: QFont = QFont("Arial", 13)
         self.editableContentText.setFont(contentFont)
 
-        self.folder_input = QLineEdit()
-        self.folder_input.setStyleSheet("border: None")
+        self.folderInput = QLineEdit()
+        self.folderInput.setStyleSheet("border: None")
         folderFont: QFont = QFont("Arial", 40)
-        self.folder_input.setFont(folderFont)
+        self.folderInput.setFont(folderFont)
 
         # Save + status row for note page
         self.saveButton = QPushButton("")
@@ -91,6 +91,7 @@ class MainWindow(QWidget): # type: ignore
 
         self.statusLabel = QLabel("")
         statusRowLayout = QHBoxLayout()
+        statusRowLayout.addWidget(self.exitButton)
         statusRowLayout.addWidget(self.saveButton)
         statusRowLayout.addStretch(1)
         statusRowLayout.addWidget(self.statusLabel)
@@ -100,7 +101,6 @@ class MainWindow(QWidget): # type: ignore
         noteWindowElementLayout.addLayout(statusRowLayout)
         noteWindowElementLayout.addWidget(self.titleInput)
         noteWindowElementLayout.addWidget(self.editableContentText)
-        noteWindowElementLayout.addWidget(self.exitButton)
 
         self.notePage.setLayout(noteWindowElementLayout)
 
@@ -129,14 +129,9 @@ class MainWindow(QWidget): # type: ignore
         self.adjustTitleHeight()
         # Call the base class implementation
         QWidget.resizeEvent(self, event)
-        
-        
-    def goToMainScreen(self) -> None:
-        # self.folder_input.clear()
-        # self.editableContentText.clear()
-        
-        self.stackedLayout.setCurrentIndex(Page.HOME.value)
 
+    def goToMainScreen(self) -> None:
+        self.stackedLayout.setCurrentIndex(Page.HOME.value)
 
     # This method calls the logic for saving on note and updates the GUI accordingly
     def onSaveNoteClicked(self) -> None:
@@ -162,6 +157,3 @@ def runApp() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(runApp())
-
-
-# 
