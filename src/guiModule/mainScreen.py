@@ -17,7 +17,11 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QLineEdit,
     QWidget,
-    QStackedLayout)
+    QStackedLayout,
+    QScrollArea,  
+    QGridLayout,  
+    QFrame        
+)
 
 
 from src.logicModule import noteLogic
@@ -106,6 +110,28 @@ class MainWindow(QWidget): # type: ignore
 
         # Create Home Page
         self.homePage:QWidget = QWidget()
+        self.homeLayout:QVBoxLayout = QVBoxLayout()
+
+        # Create Scroll Area
+        self.scrollArea:QScrollArea = QScrollArea()
+        self.scrollArea.setWidgetResizable(True)
+        self.scrollArea.setStyleSheet("border: none; background-color: transparent;")
+
+        # Create Grid Container
+        self.scrollContainer:QWidget = QWidget()
+        self.scrollContainer.setStyleSheet("background-color: transparent;")
+        
+        # Create the Grid Layout
+        self.gridLayout:QGridLayout = QGridLayout()
+        self.scrollContainer.setLayout(self.gridLayout)
+        
+        # Put the container inside the scroll area
+        self.scrollArea.setWidget(self.scrollContainer)
+
+        # Add the scroll area to the home page
+        self.homeLayout.addWidget(self.scrollArea)
+        
+        self.homePage.setLayout(self.homeLayout)
 
         # adding pages to stacked layout
         self.stackedLayout.addWidget(self.homePage)
@@ -134,9 +160,105 @@ class MainWindow(QWidget): # type: ignore
     def goToMainScreen(self) -> None:
         # self.folder_input.clear()
         # self.editableContentText.clear()
-        
+        # Refresh the list in case we saved a new note
+        self.displayNotesOnHome()
         self.stackedLayout.setCurrentIndex(Page.HOME.value)
 
+    def displayNotesOnHome(self) -> None:
+        """Fetches notes and builds custom rounded cards in a grid."""
+        import sqlite3
+
+        # Groups the cards closely together
+        self.gridLayout.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        self.gridLayout.setSpacing(30) # Pixel gap
+
+        # Gets the notes from the database
+        dbConnection:sqlite3.Connection = sqlite3.connect(databaseName)
+        cursor:sqlite3.Cursor = dbConnection.cursor()
+        cursor.execute("SELECT title, content FROM notes")
+        allNotes:list = cursor.fetchall()
+
+        # Grid positioning coordinates
+        row = 0
+        col = 0
+        maxColumns = 5 
+
+        # Builds a card for each note
+        for note in allNotes:
+            noteTitle:str = note[0]
+            noteContent:str = note[1]
+            
+            # Makes the card shape
+            card:QFrame = QFrame()
+            card.setFixedSize(350, 300) 
+            card.setStyleSheet("""
+                QFrame {
+                    background-color: #90E0EF;
+                    border-radius: 20px;
+                }
+                QFrame:hover {
+                    background-color: #7AD5E8; 
+                }
+            """)
+            
+            # Make the card clickable
+            card.mousePressEvent = lambda event, title=noteTitle: self.openNoteFromCard(title)
+            
+            # Setup the text inside the card
+            cardLayout:QVBoxLayout = QVBoxLayout()
+            cardLayout.setContentsMargins(20, 20, 20, 20)
+            cardLayout.setAlignment(Qt.AlignTop) # Text alignment
+            
+            # Add the Bold Title
+            titleLabel:QLabel = QLabel(noteTitle)
+            titleLabel.setFont(QFont("Arial", 18, QFont.Bold))
+            titleLabel.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
+            titleLabel.setWordWrap(True) # long titles can wrap to a new line
+            titleLabel.setStyleSheet("color: black; background-color: transparent;")
+            
+            # Add a little space between the title and the preview
+            cardLayout.addSpacing(15)
+            
+            # Add the Preview Text 
+            previewString:str = noteContent[:100] + "..." if len(noteContent) > 100 else noteContent
+            previewLabel:QLabel = QLabel(previewString)
+            previewLabel.setFont(QFont("Arial", 11))
+            previewLabel.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
+            previewLabel.setWordWrap(True)
+            previewLabel.setStyleSheet("color: #333333; background-color: transparent;")
+            
+            # Put text in the card, and put the card in the grid
+            cardLayout.addWidget(titleLabel)
+            cardLayout.addWidget(previewLabel)
+            card.setLayout(cardLayout)
+            
+            self.gridLayout.addWidget(card, row, col)
+            
+            # Move to the next column
+            col += 1
+            if col >= maxColumns:
+                col = 0
+                row += 1
+
+        dbConnection.close()
+
+    def openNoteFromCard(self, clickedTitle: str) -> None:
+        """Gets the clicked note's content and switches to the editing page."""
+        import sqlite3
+        
+        dbConnection:sqlite3.Connection = sqlite3.connect(databaseName)
+        cursor:sqlite3.Cursor = dbConnection.cursor()
+        
+        cursor.execute("SELECT content FROM notes WHERE title = ?", (clickedTitle,))
+        result:tuple = cursor.fetchone()
+        dbConnection.close()
+
+        if result:
+            noteContent:str = result[0]
+            
+            self.titleInput.setText(clickedTitle)
+            self.editableContentText.setText(noteContent)
+            self.stackedLayout.setCurrentIndex(Page.NOTE.value)
 
     # This method calls the logic for saving on note and updates the GUI accordingly
     def onSaveNoteClicked(self) -> None:
