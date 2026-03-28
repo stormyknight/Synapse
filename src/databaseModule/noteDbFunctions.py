@@ -1,6 +1,6 @@
 import sqlite3
 import math
-
+from typing import Optional
 
 def addNote(cursor: sqlite3.Cursor, title: str, content: str, source: str) -> int:
     """Insert a note into the notes table and return new note id."""

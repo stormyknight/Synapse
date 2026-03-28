@@ -107,6 +107,31 @@ class MainWindow(QWidget): # type: ignore
         # Create Home Page
         self.homePage:QWidget = QWidget()
 
+        # Layout for home page
+        homeLayout = QVBoxLayout()
+        homeLayout.setAlignment(Qt.AlignCenter)
+
+        # Logo
+        from PyQt5.QtGui import QPixmap
+
+        logoLabel = QLabel()
+        logoPixmap = QPixmap("logo_160x160.png")
+        logoLabel.setPixmap(logoPixmap)
+        logoLabel.setAlignment(Qt.AlignCenter)
+
+        # Title
+        titleLabel = QLabel("Synapse")
+        titleFont = QFont("Arial", 36, QFont.Bold)
+        titleLabel.setFont(titleFont)
+        titleLabel.setAlignment(Qt.AlignCenter)
+
+        # Add to layout
+        homeLayout.addWidget(logoLabel)
+        homeLayout.addWidget(titleLabel)
+
+        # Set layout
+        self.homePage.setLayout(homeLayout)
+
         # adding pages to stacked layout
         self.stackedLayout.addWidget(self.homePage)
         self.stackedLayout.addWidget(self.notePage)
@@ -115,7 +140,7 @@ class MainWindow(QWidget): # type: ignore
         self.setLayout(self.stackedLayout)
 
         # Setting to note page. For now manually change page Index
-        self.stackedLayout.setCurrentIndex(Page.NOTE.value)
+        self.stackedLayout.setCurrentIndex(Page.HOME.value)
 
     # Adjusts height of title to so title will wrap as size changes
     def adjustTitleHeight(self)->None:
