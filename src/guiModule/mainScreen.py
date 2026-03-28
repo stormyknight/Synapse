@@ -109,25 +109,32 @@ class MainWindow(QWidget): # type: ignore
 
         # Layout for home page
         homeLayout = QVBoxLayout()
-        homeLayout.setAlignment(Qt.AlignCenter)
+
+        # Top Left
+        topLayout = QHBoxLayout()
 
         # Logo
         from PyQt5.QtGui import QPixmap
 
         logoLabel = QLabel()
-        logoPixmap = QPixmap("logo_160x160.png")
+        logoPixmap = QPixmap("logo_160x160.png").scaled(40, 40)
         logoLabel.setPixmap(logoPixmap)
-        logoLabel.setAlignment(Qt.AlignCenter)
 
         # Title
         titleLabel = QLabel("Synapse")
-        titleFont = QFont("Arial", 36, QFont.Bold)
+        titleFont = QFont("Arial", 22, QFont.Bold)
         titleLabel.setFont(titleFont)
-        titleLabel.setAlignment(Qt.AlignCenter)
 
-        # Add to layout
-        homeLayout.addWidget(logoLabel)
-        homeLayout.addWidget(titleLabel)
+        # Add logo + title side by side
+        topLayout.addWidget(logoLabel)
+        topLayout.addWidget(titleLabel)
+        topLayout.addStretch()  # pushes them to the left
+
+        # Add top layout to main layout
+        homeLayout.addLayout(topLayout)
+
+        # Push everything to the top
+        homeLayout.addStretch()
 
         # Set layout
         self.homePage.setLayout(homeLayout)
