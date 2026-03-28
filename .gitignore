@@ -2,3 +2,18 @@
 htmlcov/
 guiModule/__pycache__/
 synapse.db
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Virtual environments
+.venv/
+env/
+
+# VS Code
+.vscode/
+
+# OS junk
+.DS_Store
+Thumbs.db
