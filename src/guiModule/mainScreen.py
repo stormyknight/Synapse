@@ -39,10 +39,13 @@ class Page(Enum):
 class MainWindow(QWidget): # type: ignore
     def __init__(self) -> None:
         super().__init__()
+        # tracker varibles
+        self.mainPageColumnMax:int = 3
+        self.currentNoteId: int = -1
 
         # Setting main window size and background color
         self.setWindowTitle("Synapse")
-        self.resize(1400, 1200)
+        self.resize(1200, 1000)
         self.setMinimumSize(500,400)
         self.setStyleSheet("background-color: #A5F3FF;")
 
@@ -150,9 +153,17 @@ class MainWindow(QWidget): # type: ignore
             newHeight: int = int(docHeight + 10)  # padding
             self.titleInput.setFixedHeight(newHeight)
 
+    def adjustMainPageColumnMax(self)->None:
+        oldMax: int = self.mainPageColumnMax
+        self.mainPageColumnMax = int(self.width()/390)
+        print(self.mainPageColumnMax)
+        if oldMax != self.mainPageColumnMax:
+            self.displayNotesOnHome()
+
     def resizeEvent(self, event)->None: # type: ignore
         # This method is called whenever the window is resized
         self.adjustTitleHeight()
+        self.adjustMainPageColumnMax()
         # Call the base class implementation
         QWidget.resizeEvent(self, event)
         
@@ -164,30 +175,42 @@ class MainWindow(QWidget): # type: ignore
         self.displayNotesOnHome()
         self.stackedLayout.setCurrentIndex(Page.HOME.value)
 
+    def clearLayout(self, layout):
+        if layout is not None:
+            while layout.count():
+                item = layout.takeAt(0)
+                widget = item.widget()
+                if widget is not None:
+                    widget.deleteLater() # Deletes the widget
+                else:
+                    self.clearLayout(item.layout()) # Recursively clear nested layouts
+
+
     def displayNotesOnHome(self) -> None:
         """Fetches notes and builds custom rounded cards in a grid."""
         import sqlite3
 
         # Groups the cards closely together
+        self.clearLayout(self.gridLayout)
         self.gridLayout.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         self.gridLayout.setSpacing(30) # Pixel gap
 
         # Gets the notes from the database
         dbConnection:sqlite3.Connection = sqlite3.connect(databaseName)
         cursor:sqlite3.Cursor = dbConnection.cursor()
-        cursor.execute("SELECT title, content FROM notes")
+        cursor.execute("SELECT title, content, id FROM notes")
         allNotes:list = cursor.fetchall()
 
         # Grid positioning coordinates
         row = 0
         col = 0
-        maxColumns = 5 
 
         # Builds a card for each note
         for note in allNotes:
             noteTitle:str = note[0]
             noteContent:str = note[1]
-            
+            noteID:int = note[2]
+            # print("title: ", noteTitle, " content: ", noteContent, "id: ", id)
             # Makes the card shape
             card:QFrame = QFrame()
             card.setFixedSize(350, 300) 
@@ -202,7 +225,8 @@ class MainWindow(QWidget): # type: ignore
             """)
             
             # Make the card clickable
-            card.mousePressEvent = lambda event, title=noteTitle: self.openNoteFromCard(title)
+            card.mousePressEvent = lambda event, title=noteTitle: self.openNoteFromCard(noteID)
+            print(noteID)
             
             # Setup the text inside the card
             cardLayout:QVBoxLayout = QVBoxLayout()
@@ -236,29 +260,31 @@ class MainWindow(QWidget): # type: ignore
             
             # Move to the next column
             col += 1
-            if col >= maxColumns:
+            if col >= self.mainPageColumnMax:
                 col = 0
                 row += 1
 
         dbConnection.close()
 
-    def openNoteFromCard(self, clickedTitle: str) -> None:
+    def openNoteFromCard(self, clickedId: int) -> None:
         """Gets the clicked note's content and switches to the editing page."""
         import sqlite3
         
         dbConnection:sqlite3.Connection = sqlite3.connect(databaseName)
         cursor:sqlite3.Cursor = dbConnection.cursor()
-        
-        cursor.execute("SELECT content FROM notes WHERE title = ?", (clickedTitle,))
+        print(clickedId)
+        cursor.execute("SELECT content, title FROM notes WHERE id = ?", (clickedId,))
         result:tuple = cursor.fetchone()
         dbConnection.close()
 
         if result:
             noteContent:str = result[0]
+            noteTitle:str = result[1]
             
-            self.titleInput.setText(clickedTitle)
+            self.titleInput.setText(noteTitle)
             self.editableContentText.setText(noteContent)
             self.stackedLayout.setCurrentIndex(Page.NOTE.value)
+            self.currentNoteId = clickedId
 
     # This method calls the logic for saving on note and updates the GUI accordingly
     def onSaveNoteClicked(self) -> None:
