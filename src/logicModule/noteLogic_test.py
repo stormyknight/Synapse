@@ -44,7 +44,7 @@ def test_successful_onNoteSaveClicked(mock_dbFunctions, mock_connection, mock_pa
     mock_dbFunctions.connectDb = MagicMock()
     mock_dbFunctions.connectDb.return_value = mock_connection
 
-    assert type(noteLogic.onNoteSaveClicked("title", "content", ":memory:")) == str # pylint: disable=unidiomatic-typecheck
+    assert type(noteLogic.onNoteSaveClicked("title", "content", ":memory:", -1)) == str # pylint: disable=unidiomatic-typecheck
 
 
 @patch("src.logicModule.noteLogic.os.path")
@@ -66,19 +66,19 @@ def test_successful_noTitle_onNoteSaveClicked(mock_dbFunctions, mock_connection,
     mock_dbFunctions.connectDb = MagicMock()
     mock_dbFunctions.connectDb.return_value = mock_connection
 
-    assert type(noteLogic.onNoteSaveClicked("", "content", ":memory:")) == str # pylint: disable=unidiomatic-typecheck
+    assert type(noteLogic.onNoteSaveClicked("", "content", ":memory:", -1)) == str # pylint: disable=unidiomatic-typecheck
 
 
 # test onNoteSaveClicked when it fails due to no content
 # pylint: disable=invalid-name
 def test_fail_noContent_onNoteSaveClicked(): # type:ignore
-    assert noteLogic.onNoteSaveClicked("", "", ":memory:") == {"title": "Cannot Save", "msg": "Note content is required."}
+    assert noteLogic.onNoteSaveClicked("", "", ":memory:", -1) == {"title": "Cannot Save", "msg": "Note content is required."}
 
 
 # test onNoteSaveClicked when it fails when it can't find the database
 # pylint: disable=invalid-name
 def test_fail_noPath_onNoteSaveClicked(): # type:ignore
-    assert noteLogic.onNoteSaveClicked("title", "content    ", ":memory:") == {"title": "Database Missing", "msg": "Database '{databaseName}' not found.\nRun setup_database.py first."}
+    assert noteLogic.onNoteSaveClicked("title", "content    ", ":memory:", 1) == {"title": "Database Missing", "msg": "Database '{databaseName}' not found.\nRun setup_database.py first."}
 
 
 # test onNoteSaveClicked when it fails when there is a database error
@@ -89,4 +89,4 @@ def test_fail_dbError_onNoteSaveClicked( mock_path): # type:ignore
     mock_path.exists = MagicMock()
     mock_path.exists.return_value = True
 
-    assert noteLogic.onNoteSaveClicked("title", "content    ", ":memory:") == {"title": "Database Error", "msg": "SQLite error:\nunable to open database file"}
+    assert noteLogic.onNoteSaveClicked("title", "content    ", ":memory:", 1) == {"title": "Database Error", "msg": "SQLite error:\nunable to open database file"}

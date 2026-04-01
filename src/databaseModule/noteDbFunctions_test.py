@@ -9,7 +9,17 @@ from src.databaseModule import noteDbFunctions
 # pylint: disable=invalid-name
 def test_addNote()-> None:
     # mock cursor
-    dummy_cursor = MagicMock(spec=sqlite3.Cursor)
-    dummy_cursor.execute = MagicMock()
-    noteDbFunctions.addNote(dummy_cursor, "Title", "content", "source")
-    dummy_cursor.execute.assert_called()
+    dummyCursor = MagicMock(spec=sqlite3.Cursor)
+    dummyCursor.execute = MagicMock()
+    noteDbFunctions.addNote(dummyCursor, "Title", "content", "source")
+    dummyCursor.execute.assert_called()
+
+
+# test updateNote
+# pylint: disable=invalid-name
+def test_updateNotes()->None:
+    # mock cursor
+    dummyCursor = MagicMock(spec=sqlite3.Cursor)
+    dummyCursor.execute = MagicMock()
+    noteDbFunctions.updateNote(dummyCursor, 1, "Title", "content")
+    dummyCursor.execute.assert_called()

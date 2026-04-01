@@ -1,8 +1,6 @@
-import os
 import sqlite3
 import math
 from typing import Optional
-from src.databaseModule import generalDbFunctions
 
 
 def addNote(cursor: sqlite3.Cursor, title: str, content: str, source: str) -> int:
@@ -16,19 +14,9 @@ def addNote(cursor: sqlite3.Cursor, title: str, content: str, source: str) -> in
     )
     return cursor.lastrowid if cursor.lastrowid is not None else int(math.nan)
 
+
 # Updates the title and/or content of an existing note in the database
-def updateNote(databaseName: str, noteId: int, title: Optional[str] = None, content: Optional[str] = None) -> bool:
-
-    if title is None and content is None:
-        return False
-
-    if not os.path.exists(databaseName):
-        return False
-
-    connection: sqlite3.Connection = generalDbFunctions.connectDb(databaseName)
-
-    cursor: sqlite3.Cursor = connection.cursor()
-
+def updateNote(cursor: sqlite3.Cursor, noteId: int, title: Optional[str] = None, content: Optional[str] = None) -> int:
     updateFields: list[str] = []
 
     updateValues: list[str | int] = []
@@ -54,10 +42,9 @@ def updateNote(databaseName: str, noteId: int, title: Optional[str] = None, cont
 
     cursor.execute(updateQuery, updateValues)
 
-    connection.commit()
+    return noteId
 
-    updatedRows = cursor.rowcount
 
-    connection.close()
-
-    return updatedRows > 0
+def getNotes(cursor: sqlite3.Cursor)->list: # type: ignore[type-arg]
+    cursor.execute("SELECT * FROM notes")
+    return cursor.fetchall()

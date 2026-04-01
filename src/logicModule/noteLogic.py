@@ -14,9 +14,11 @@ def makeDefaultTitle() -> str:
     return f"Untitled Note ({timestamp})"
 
 
-def onNoteSaveClicked(title: str, content: str, databaseName:str)->dict[str, str]|str:
+def onNoteSaveClicked(title: str, content: str, databaseName:str, incommingId:int)->dict[str, str]|str:
     """Save current note contents into synapse.db."""
     if not title:
+        if incommingId > 0:
+            return  {"title": "Cannot Save", "msg": "Error finding title."}
         title = makeDefaultTitle()
 
     if not content:
@@ -30,11 +32,33 @@ def onNoteSaveClicked(title: str, content: str, databaseName:str)->dict[str, str
         conn = generalDbFunctions.connectDb(dbPath)
         try:
             cursor = conn.cursor()
-            noteId = noteDbFunctions.addNote(cursor, title, content, "gui")
+            if incommingId < 0:
+                noteId = noteDbFunctions.addNote(cursor, title, content, "gui")
+            else:
+                noteId = noteDbFunctions.updateNote(cursor,incommingId,title, content)
             conn.commit()
         finally:
             conn.close()
 
         return (f"Saved (id={noteId})")
+    except sqlite3.Error as exc:
+        return  {"title": "Database Error", "msg": f"SQLite error:\n{exc}"}
+
+
+def getNotesHandler(databaseName:str)-> dict[str, str]|list: # type: ignore[type-arg]
+    dbPath = generalDbFunctions.getDbPath(databaseName)
+    if not os.path.exists(dbPath):
+        return  {"title": "Database Missing", "msg": "Database '{databaseName}' not found.\nRun setup_database.py first."}
+
+    try:
+        conn = generalDbFunctions.connectDb(dbPath)
+        try:
+            cursor = conn.cursor()
+            allNotes:list = noteDbFunctions.getNotes(cursor) # type: ignore[type-arg]
+            conn.commit()
+        finally:
+            conn.close()
+
+        return allNotes
     except sqlite3.Error as exc:
         return  {"title": "Database Error", "msg": f"SQLite error:\n{exc}"}

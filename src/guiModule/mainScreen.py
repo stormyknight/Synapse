@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 from enum import Enum
+import sqlite3
 
 from PyQt5.QtGui import QFont, QIcon
 from PyQt5.QtCore import QSize, Qt
@@ -18,9 +19,10 @@ from PyQt5.QtWidgets import (
     QLineEdit,
     QWidget,
     QStackedLayout,
-    QScrollArea,  
-    QGridLayout,  
-    QFrame        
+    QScrollArea,
+    QGridLayout,
+    QFrame,
+    QLayout
 )
 
 
@@ -69,14 +71,12 @@ class MainWindow(QWidget): # type: ignore
         # Expand when text changes
         self.titleInput.textChanged.connect(self.adjustTitleHeight)
         self.titleInput.setFont(titleFont)
-        
-            # Creating exit button to return to main screen
-        self.exitButton = QPushButton("← Back to Main")
-        self.exitButton.setStyleSheet("border: None; text-align: left;")
-        exitFont: QFont = QFont("Arial", 13)
-        self.exitButton.setFont(exitFont)
-        self.exitButton.clicked.connect(self.goToMainScreen)
 
+            # Creating exit button to return to main screen
+        self.exitButton = QPushButton()
+        self.exitButton.setStyleSheet("border: None; text-align: left;")
+        self.exitButton.setIcon(QIcon("backIcon.png"))
+        self.exitButton.clicked.connect(self.goToMainScreen)
 
         # Creating the content textedit and setting font and removing border for note page
         self.editableContentText = QTextEdit()
@@ -84,10 +84,10 @@ class MainWindow(QWidget): # type: ignore
         contentFont: QFont = QFont("Arial", 13)
         self.editableContentText.setFont(contentFont)
 
-        self.folder_input = QLineEdit()
-        self.folder_input.setStyleSheet("border: None")
+        self.folderInput = QLineEdit()
+        self.folderInput.setStyleSheet("border: None")
         folderFont: QFont = QFont("Arial", 40)
-        self.folder_input.setFont(folderFont)
+        self.folderInput.setFont(folderFont)
 
         # Save + status row for note page
         self.saveButton = QPushButton("")
@@ -98,6 +98,7 @@ class MainWindow(QWidget): # type: ignore
 
         self.statusLabel = QLabel("")
         statusRowLayout = QHBoxLayout()
+        statusRowLayout.addWidget(self.exitButton)
         statusRowLayout.addWidget(self.saveButton)
         statusRowLayout.addStretch(1)
         statusRowLayout.addWidget(self.statusLabel)
@@ -123,17 +124,17 @@ class MainWindow(QWidget): # type: ignore
         # Create Grid Container
         self.scrollContainer:QWidget = QWidget()
         self.scrollContainer.setStyleSheet("background-color: transparent;")
-        
+
         # Create the Grid Layout
         self.gridLayout:QGridLayout = QGridLayout()
         self.scrollContainer.setLayout(self.gridLayout)
-        
+
         # Put the container inside the scroll area
         self.scrollArea.setWidget(self.scrollContainer)
 
         # Add the scroll area to the home page
         self.homeLayout.addWidget(self.scrollArea)
-        
+
         self.homePage.setLayout(self.homeLayout)
 
         # adding pages to stacked layout
@@ -156,7 +157,6 @@ class MainWindow(QWidget): # type: ignore
     def adjustMainPageColumnMax(self)->None:
         oldMax: int = self.mainPageColumnMax
         self.mainPageColumnMax = int(self.width()/390)
-        print(self.mainPageColumnMax)
         if oldMax != self.mainPageColumnMax:
             self.displayNotesOnHome()
 
@@ -166,16 +166,13 @@ class MainWindow(QWidget): # type: ignore
         self.adjustMainPageColumnMax()
         # Call the base class implementation
         QWidget.resizeEvent(self, event)
-        
-        
+
     def goToMainScreen(self) -> None:
-        # self.folder_input.clear()
-        # self.editableContentText.clear()
         # Refresh the list in case we saved a new note
         self.displayNotesOnHome()
         self.stackedLayout.setCurrentIndex(Page.HOME.value)
 
-    def clearLayout(self, layout):
+    def clearLayout(self, layout: QLayout)->None:
         if layout is not None:
             while layout.count():
                 item = layout.takeAt(0)
@@ -185,110 +182,100 @@ class MainWindow(QWidget): # type: ignore
                 else:
                     self.clearLayout(item.layout()) # Recursively clear nested layouts
 
-
     def displayNotesOnHome(self) -> None:
         """Fetches notes and builds custom rounded cards in a grid."""
-        import sqlite3
 
         # Groups the cards closely together
         self.clearLayout(self.gridLayout)
         self.gridLayout.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         self.gridLayout.setSpacing(30) # Pixel gap
 
-        # Gets the notes from the database
-        dbConnection:sqlite3.Connection = sqlite3.connect(databaseName)
-        cursor:sqlite3.Cursor = dbConnection.cursor()
-        cursor.execute("SELECT title, content, id FROM notes")
-        allNotes:list = cursor.fetchall()
+        allNotes:dict[str, str]|list = noteLogic.getNotesHandler(databaseName) # type: ignore[type-arg]
 
-        # Grid positioning coordinates
-        row = 0
-        col = 0
+        if type(allNotes) is list: # pylint: disable=unidiomatic-typecheck
+            # Grid positioning coordinates
+            row = 0
+            col = 0
 
-        # Builds a card for each note
-        for note in allNotes:
-            noteTitle:str = note[0]
-            noteContent:str = note[1]
-            noteID:int = note[2]
-            # print("title: ", noteTitle, " content: ", noteContent, "id: ", id)
-            # Makes the card shape
-            card:QFrame = QFrame()
-            card.setFixedSize(350, 300) 
-            card.setStyleSheet("""
-                QFrame {
-                    background-color: #90E0EF;
-                    border-radius: 20px;
-                }
-                QFrame:hover {
-                    background-color: #7AD5E8; 
-                }
-            """)
-            
-            # Make the card clickable
-            card.mousePressEvent = lambda event, title=noteTitle: self.openNoteFromCard(noteID)
-            print(noteID)
-            
-            # Setup the text inside the card
-            cardLayout:QVBoxLayout = QVBoxLayout()
-            cardLayout.setContentsMargins(20, 20, 20, 20)
-            cardLayout.setAlignment(Qt.AlignTop) # Text alignment
-            
-            # Add the Bold Title
-            titleLabel:QLabel = QLabel(noteTitle)
-            titleLabel.setFont(QFont("Arial", 18, QFont.Bold))
-            titleLabel.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
-            titleLabel.setWordWrap(True) # long titles can wrap to a new line
-            titleLabel.setStyleSheet("color: black; background-color: transparent;")
-            
-            # Add a little space between the title and the preview
-            cardLayout.addSpacing(15)
-            
-            # Add the Preview Text 
-            previewString:str = noteContent[:100] + "..." if len(noteContent) > 100 else noteContent
-            previewLabel:QLabel = QLabel(previewString)
-            previewLabel.setFont(QFont("Arial", 11))
-            previewLabel.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
-            previewLabel.setWordWrap(True)
-            previewLabel.setStyleSheet("color: #333333; background-color: transparent;")
-            
-            # Put text in the card, and put the card in the grid
-            cardLayout.addWidget(titleLabel)
-            cardLayout.addWidget(previewLabel)
-            card.setLayout(cardLayout)
-            
-            self.gridLayout.addWidget(card, row, col)
-            
-            # Move to the next column
-            col += 1
-            if col >= self.mainPageColumnMax:
-                col = 0
-                row += 1
+            # Builds a card for each note
+            for note in allNotes:
+                noteTitle:str = note[1]
+                noteContent:str = note[2]
+                noteId: int = note[0]
+                # Makes the card shape
+                card:QFrame = QFrame()
+                card.setFixedSize(350, 300)
+                card.setStyleSheet("""
+                    QFrame {
+                        background-color: #90E0EF;
+                        border-radius: 20px;
+                    }
+                    QFrame:hover {
+                        background-color: #7AD5E8; 
+                    }
+                """)
 
-        dbConnection.close()
+                # Make the card clickable
+                card.mousePressEvent = lambda event, id=noteId: self.openNoteFromCard(id)
+
+                # Setup the text inside the card
+                cardLayout:QVBoxLayout = QVBoxLayout()
+                cardLayout.setContentsMargins(20, 20, 20, 20)
+                cardLayout.setAlignment(Qt.AlignTop) # Text alignment
+
+                # Add the Bold Title
+                titleLabel:QLabel = QLabel(noteTitle)
+                titleLabel.setFont(QFont("Arial", 18, QFont.Bold))
+                titleLabel.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
+                titleLabel.setWordWrap(True) # long titles can wrap to a new line
+                titleLabel.setStyleSheet("color: black; background-color: transparent;")
+
+                # Add a little space between the title and the preview
+                cardLayout.addSpacing(15)
+
+                # Add the Preview Text
+                previewString:str = noteContent[:100] + "..." if len(noteContent) > 100 else noteContent
+                previewLabel:QLabel = QLabel(previewString)
+                previewLabel.setFont(QFont("Arial", 11))
+                previewLabel.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
+                previewLabel.setWordWrap(True)
+                previewLabel.setStyleSheet("color: #333333; background-color: transparent;")
+
+                # Put text in the card, and put the card in the grid
+                cardLayout.addWidget(titleLabel)
+                cardLayout.addWidget(previewLabel)
+                card.setLayout(cardLayout)
+
+                self.gridLayout.addWidget(card, row, col)
+
+                # Move to the next column
+                col += 1
+                if col >= self.mainPageColumnMax:
+                    col = 0
+                    row += 1
 
     def openNoteFromCard(self, clickedId: int) -> None:
         """Gets the clicked note's content and switches to the editing page."""
-        import sqlite3
-        
         dbConnection:sqlite3.Connection = sqlite3.connect(databaseName)
         cursor:sqlite3.Cursor = dbConnection.cursor()
-        print(clickedId)
-        cursor.execute("SELECT content, title FROM notes WHERE id = ?", (clickedId,))
-        result:tuple = cursor.fetchone()
+
+        cursor.execute("SELECT title, content FROM notes WHERE id = ?", (clickedId,))
+        result:tuple = cursor.fetchone() # type: ignore[type-arg]
         dbConnection.close()
 
         if result:
-            noteContent:str = result[0]
-            noteTitle:str = result[1]
-            
+            noteTitle:str = result[0]
+            noteContent:str = result[1]
+            self.currentNoteId = clickedId
+            self.statusLabel.setText("")
+
             self.titleInput.setText(noteTitle)
             self.editableContentText.setText(noteContent)
             self.stackedLayout.setCurrentIndex(Page.NOTE.value)
-            self.currentNoteId = clickedId
 
     # This method calls the logic for saving on note and updates the GUI accordingly
     def onSaveNoteClicked(self) -> None:
-        saveResult: dict[str, str] | str =noteLogic.onNoteSaveClicked(self.titleInput.toPlainText().strip(), self.editableContentText.toPlainText().strip(), databaseName)
+        saveResult: dict[str, str] | str =noteLogic.onNoteSaveClicked(self.titleInput.toPlainText().strip(), self.editableContentText.toPlainText().strip(), databaseName, self.currentNoteId)
         if type(saveResult) is not str and type(saveResult) is dict: # pylint: disable=unidiomatic-typecheck
             QMessageBox.critical(
                 self,
@@ -310,6 +297,3 @@ def runApp() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(runApp())
-
-
-# 
