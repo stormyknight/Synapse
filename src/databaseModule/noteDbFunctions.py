@@ -48,3 +48,8 @@ def updateNote(cursor: sqlite3.Cursor, noteId: int, title: Optional[str] = None,
 def getNotes(cursor: sqlite3.Cursor)->list: # type: ignore[type-arg]
     cursor.execute("SELECT * FROM notes")
     return cursor.fetchall()
+
+
+def getNote(cursor: sqlite3.Cursor, clickedId: int)->tuple: # type: ignore[type-arg]
+    cursor.execute("SELECT * FROM notes WHERE id = ?", (clickedId,))
+    return cursor.fetchone() # type: ignore[no-any-return]

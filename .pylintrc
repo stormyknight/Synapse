@@ -20,4 +20,5 @@ disable =
     import-error,
     too-many-statements,
     too-many-instance-attributes,
+    unidiomatic-typecheck
 

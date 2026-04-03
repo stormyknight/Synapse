@@ -23,3 +23,19 @@ def test_updateNotes()->None:
     dummyCursor.execute = MagicMock()
     noteDbFunctions.updateNote(dummyCursor, 1, "Title", "content")
     dummyCursor.execute.assert_called()
+
+
+def test_getNotes()->None:
+    # mock cursor
+    dummyCursor = MagicMock(spec=sqlite3.Cursor)
+    dummyCursor.execute = MagicMock()
+    noteDbFunctions.getNotes(dummyCursor)
+    dummyCursor.execute.assert_called()
+
+
+def test_getNote()->None:
+    # mock cursor
+    dummyCursor = MagicMock(spec=sqlite3.Cursor)
+    dummyCursor.execute = MagicMock()
+    noteDbFunctions.getNote(dummyCursor, 1)
+    dummyCursor.execute.assert_called()

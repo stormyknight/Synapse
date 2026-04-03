@@ -62,3 +62,21 @@ def getNotesHandler(databaseName:str)-> dict[str, str]|list: # type: ignore[type
         return allNotes
     except sqlite3.Error as exc:
         return  {"title": "Database Error", "msg": f"SQLite error:\n{exc}"}
+
+
+def getNoteHandler(databaseName:str, noteId: int)->tuple|dict[str, str]: # type: ignore[type-arg]
+    dbPath = generalDbFunctions.getDbPath(databaseName)
+    if not os.path.exists(dbPath):
+        return  {"title": "Database Missing", "msg": "Database '{databaseName}' not found.\nRun setup_database.py first."}
+    try:
+        conn = generalDbFunctions.connectDb(dbPath)
+        try:
+            cursor = conn.cursor()
+            note:tuple = noteDbFunctions.getNote(cursor, noteId) # type: ignore[type-arg]
+            conn.commit()
+        finally:
+            conn.close()
+
+        return note
+    except sqlite3.Error as exc:
+        return  {"title": "Database Error", "msg": f"SQLite error:\n{exc}"}

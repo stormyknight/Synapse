@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 from enum import Enum
-import sqlite3
 
 from PyQt5.QtGui import QFont, QIcon
 from PyQt5.QtCore import QSize, Qt
@@ -256,16 +255,10 @@ class MainWindow(QWidget): # type: ignore
 
     def openNoteFromCard(self, clickedId: int) -> None:
         """Gets the clicked note's content and switches to the editing page."""
-        dbConnection:sqlite3.Connection = sqlite3.connect(databaseName)
-        cursor:sqlite3.Cursor = dbConnection.cursor()
-
-        cursor.execute("SELECT title, content FROM notes WHERE id = ?", (clickedId,))
-        result:tuple = cursor.fetchone() # type: ignore[type-arg]
-        dbConnection.close()
-
-        if result:
-            noteTitle:str = result[0]
-            noteContent:str = result[1]
+        result: tuple | dict[str, str] = noteLogic.getNoteHandler(databaseName, clickedId) # type: ignore[type-arg]
+        if type(result) == tuple:
+            noteTitle:str = result[1]
+            noteContent:str = result[2]
             self.currentNoteId = clickedId
             self.statusLabel.setText("")
 
@@ -285,6 +278,7 @@ class MainWindow(QWidget): # type: ignore
             self.statusLabel.setText("Save failed")
         else:
             self.statusLabel.setText(saveResult)
+            self.currentNoteId = int("".join(filter(str.isdigit, saveResult)))
 
 
 def runApp() -> int:
