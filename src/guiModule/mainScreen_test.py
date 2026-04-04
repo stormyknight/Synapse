@@ -8,7 +8,6 @@ from unittest.mock import MagicMock, patch
 from PyQt5.QtGui import QResizeEvent
 from PyQt5.QtCore import QSize
 from PyQt5.QtWidgets import QHBoxLayout
-
 # pylint: disable=invalid-name
 from src.guiModule import mainScreen
 

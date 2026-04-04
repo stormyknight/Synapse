@@ -6,7 +6,7 @@ from __future__ import annotations
 from enum import Enum
 
 from PyQt5.QtGui import QFont, QIcon
-from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtCore import QSize, Qt, QPoint
 from PyQt5.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -21,7 +21,8 @@ from PyQt5.QtWidgets import (
     QScrollArea,
     QGridLayout,
     QFrame,
-    QLayout
+    QLayout,
+    QMenu
 )
 
 
@@ -240,7 +241,19 @@ class MainWindow(QWidget): # type: ignore
                 previewLabel.setWordWrap(True)
                 previewLabel.setStyleSheet("color: #333333; background-color: transparent;")
 
+                # Add overflow menu
+                noteMenu: QMenu = QMenu(self)
+                noteMenu.addAction("Add/Remove Tags")
+                noteMenu.setLayoutDirection(Qt.RightToLeft)
+
+                # Add overflow menu button
+                overflowMenuButton: QPushButton = QPushButton()
+                overflowMenuButton.setIcon(QIcon("more-dots-v.png"))
+                overflowMenuButton.clicked.connect(lambda _, b=overflowMenuButton, m=noteMenu:  self.showMenu(m, b))
+                overflowMenuButton.setFixedSize(24,24)
+
                 # Put text in the card, and put the card in the grid
+                cardLayout.addWidget(overflowMenuButton, alignment=Qt.AlignRight)
                 cardLayout.addWidget(titleLabel)
                 cardLayout.addWidget(previewLabel)
                 card.setLayout(cardLayout)
@@ -252,6 +265,11 @@ class MainWindow(QWidget): # type: ignore
                 if col >= self.mainPageColumnMax:
                     col = 0
                     row += 1
+
+    #for showing and hiding the note menu
+    def showMenu(self, menu:QMenu, button: QPushButton)->None:
+        pos = button.mapToGlobal(QPoint(button.width(), 0))
+        menu.popup(pos)
 
     def openNoteFromCard(self, clickedId: int) -> None:
         """Gets the clicked note's content and switches to the editing page."""
