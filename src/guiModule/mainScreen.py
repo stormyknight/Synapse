@@ -5,7 +5,7 @@
 from __future__ import annotations
 from enum import Enum
 
-from PyQt5.QtGui import QFont, QIcon
+from PyQt5.QtGui import QFont, QIcon, QPixmap
 from PyQt5.QtCore import QSize, Qt, QPoint
 from PyQt5.QtWidgets import (
     QApplication,
@@ -25,9 +25,7 @@ from PyQt5.QtWidgets import (
     QMenu
 )
 
-
 from src.logicModule import noteLogic
-
 
 databaseName = "synapse.db"
 
@@ -37,38 +35,33 @@ class Page(Enum):
     NOTE = 1
 
 
-# Window for notes and homepage
-class MainWindow(QWidget): # type: ignore
+class MainWindow(QWidget):  # type: ignore
     def __init__(self) -> None:
         super().__init__()
         # tracker varibles
         self.mainPageColumnMax:int = 3
-        self.currentNoteId: int = -1
 
-        # Setting main window size and background color
         self.setWindowTitle("Synapse")
         self.resize(1200, 1000)
         self.setMinimumSize(500,400)
         self.setStyleSheet("background-color: #A5F3FF;")
 
-        # Create Stacked Widget for holding multple pages
+        # Track whether user is editing an existing note or creating a new one
+        self.currentNoteId: int | None = None
+
+        # Create Stacked Widget for holding multiple pages
         self.stackedLayout: QStackedLayout = QStackedLayout()
 
-        # Create note page
-        self.notePage:QWidget = QWidget()
+        # ---------------- NOTE PAGE ----------------
+        self.notePage: QWidget = QWidget()
 
-        # Title row and setting title font for note page
+        # Title input
         self.titleInput: QTextEdit = QTextEdit()
         titleFont: QFont = QFont("Arial", 26)
         self.titleInput.setStyleSheet("border: None;")
-
-        # Disable Scroll bars for note page title
         self.titleInput.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.titleInput.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-
-        # Start as one line tall
         self.titleInput.setFixedHeight(75)
-        # Expand when text changes
         self.titleInput.textChanged.connect(self.adjustTitleHeight)
         self.titleInput.setFont(titleFont)
 
@@ -89,10 +82,10 @@ class MainWindow(QWidget): # type: ignore
         folderFont: QFont = QFont("Arial", 40)
         self.folderInput.setFont(folderFont)
 
-        # Save + status row for note page
+        # Save + status row
         self.saveButton = QPushButton("")
         self.saveButton.setIcon(QIcon("saveIcon.png"))
-        self.saveButton.setIconSize(QSize(40,40))
+        self.saveButton.setIconSize(QSize(40, 40))
         self.saveButton.setStyleSheet("border: none;")
         self.saveButton.clicked.connect(self.onSaveNoteClicked)
 
@@ -103,55 +96,81 @@ class MainWindow(QWidget): # type: ignore
         statusRowLayout.addStretch(1)
         statusRowLayout.addWidget(self.statusLabel)
 
-        # Creating a vertical box layout to format note elements for note page
         noteWindowElementLayout: QVBoxLayout = QVBoxLayout()
         noteWindowElementLayout.addLayout(statusRowLayout)
         noteWindowElementLayout.addWidget(self.titleInput)
         noteWindowElementLayout.addWidget(self.editableContentText)
-        noteWindowElementLayout.addWidget(self.exitButton)
 
         self.notePage.setLayout(noteWindowElementLayout)
 
-        # Create Home Page
-        self.homePage:QWidget = QWidget()
-        self.homeLayout:QVBoxLayout = QVBoxLayout()
+        # ---------------- HOME PAGE ----------------
+        self.homePage: QWidget = QWidget()
+        self.homeLayout: QVBoxLayout = QVBoxLayout()
 
-        # Create Scroll Area
-        self.scrollArea:QScrollArea = QScrollArea()
+        # Logo
+        self.logoLabel = QLabel()
+        logoPixmap = QPixmap("logo_160x160.png")
+        self.logoLabel.setPixmap(logoPixmap)
+        self.logoLabel.setAlignment(Qt.AlignCenter)
+
+        # Title
+        self.homeTitleLabel = QLabel("Synapse")
+        homeTitleFont = QFont("Arial", 36, QFont.Bold)
+        self.homeTitleLabel.setFont(homeTitleFont)
+        self.homeTitleLabel.setAlignment(Qt.AlignCenter)
+
+        self.homeLayout.addWidget(self.logoLabel)
+        self.homeLayout.addWidget(self.homeTitleLabel)
+
+        # Scroll Area
+        self.scrollArea: QScrollArea = QScrollArea()
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setStyleSheet("border: none; background-color: transparent;")
 
-        # Create Grid Container
-        self.scrollContainer:QWidget = QWidget()
+        # Grid container
+        self.scrollContainer: QWidget = QWidget()
         self.scrollContainer.setStyleSheet("background-color: transparent;")
 
-        # Create the Grid Layout
-        self.gridLayout:QGridLayout = QGridLayout()
+        self.gridLayout: QGridLayout = QGridLayout()
         self.scrollContainer.setLayout(self.gridLayout)
 
         # Put the container inside the scroll area
         self.scrollArea.setWidget(self.scrollContainer)
-
-        # Add the scroll area to the home page
         self.homeLayout.addWidget(self.scrollArea)
 
         self.homePage.setLayout(self.homeLayout)
 
-        # adding pages to stacked layout
+        # ---------------- STACK ----------------
         self.stackedLayout.addWidget(self.homePage)
         self.stackedLayout.addWidget(self.notePage)
-
-        # adding stacked layout to mainScreen
         self.setLayout(self.stackedLayout)
 
-        # Setting to note page. For now manually change page Index
-        self.stackedLayout.setCurrentIndex(Page.NOTE.value)
+        # ---------------- FLOATING NEW NOTE BUTTON ----------------
+        self.newNoteButton = QPushButton(self)
+        self.newNoteButton.setIcon(QIcon("createNewNoteButton.png"))
+        self.newNoteButton.setIconSize(QSize(120, 120))
+        self.newNoteButton.setFixedSize(140, 140)
+        self.newNoteButton.setStyleSheet("""
+            QPushButton {
+                border: none;
+                background-color: transparent;
+            }
+            QPushButton:hover {
+                background-color: rgba(0, 0, 0, 0.05);
+                border-radius: 70px;
+            }
+        """)
+        self.newNoteButton.clicked.connect(self.createNewNote)
+        self.newNoteButton.raise_()
 
-    # Adjusts height of title to so title will wrap as size changes
-    def adjustTitleHeight(self)->None:
+        self.displayNotesOnHome()
+        self.stackedLayout.setCurrentIndex(Page.HOME.value)
+
+    def adjustTitleHeight(self) -> None:
+        """Adjust title field height so wrapped text expands the box."""
         if self.titleInput.document() is not None:
             docHeight: float = self.titleInput.document().size().height()
-            newHeight: int = int(docHeight + 10)  # padding
+            newHeight: int = int(docHeight + 10)
             self.titleInput.setFixedHeight(newHeight)
 
     def adjustMainPageColumnMax(self)->None:
@@ -164,13 +183,32 @@ class MainWindow(QWidget): # type: ignore
         # This method is called whenever the window is resized
         self.adjustTitleHeight()
         self.adjustMainPageColumnMax()
-        # Call the base class implementation
+
+        margin = 30
+        btnWidth = self.newNoteButton.width()
+        btnHeight = self.newNoteButton.height()
+
+        self.newNoteButton.move(
+            self.width() - btnWidth - margin,
+            self.height() - btnHeight - margin
+        )
+
         QWidget.resizeEvent(self, event)
 
+    def createNewNote(self) -> None:
+        """Open a blank note editor."""
+        self.currentNoteId = None
+        self.titleInput.clear()
+        self.editableContentText.clear()
+        self.statusLabel.setText("")
+        self.stackedLayout.setCurrentIndex(Page.NOTE.value)
+
     def goToMainScreen(self) -> None:
-        # Refresh the list in case we saved a new note
+        """Return to home page and refresh note cards."""
         self.displayNotesOnHome()
+        self.currentNoteId = None
         self.stackedLayout.setCurrentIndex(Page.HOME.value)
+        self.newNoteButton.raise_()
 
     def clearLayout(self, layout: QLayout)->None:
         if layout is not None:
@@ -282,12 +320,19 @@ class MainWindow(QWidget): # type: ignore
 
             self.titleInput.setText(noteTitle)
             self.editableContentText.setText(noteContent)
+            self.statusLabel.setText("")
             self.stackedLayout.setCurrentIndex(Page.NOTE.value)
 
-    # This method calls the logic for saving on note and updates the GUI accordingly
     def onSaveNoteClicked(self) -> None:
-        saveResult: dict[str, str] | str =noteLogic.onNoteSaveClicked(self.titleInput.toPlainText().strip(), self.editableContentText.toPlainText().strip(), databaseName, self.currentNoteId)
-        if type(saveResult) is not str and type(saveResult) is dict: # pylint: disable=unidiomatic-typecheck
+        """Save a new note or update the currently open one."""
+        saveResult: dict[str, str] | str = noteLogic.onNoteSaveClicked(
+            self.titleInput.toPlainText().strip(),
+            self.editableContentText.toPlainText().strip(),
+            databaseName,
+            self.currentNoteId
+        )
+
+        if type(saveResult) is not str and type(saveResult) is dict:  # pylint: disable=unidiomatic-typecheck
             QMessageBox.critical(
                 self,
                 saveResult["title"],
@@ -297,6 +342,7 @@ class MainWindow(QWidget): # type: ignore
         else:
             self.statusLabel.setText(saveResult)
             self.currentNoteId = int("".join(filter(str.isdigit, saveResult)))
+            self.displayNotesOnHome()
 
 
 def runApp() -> int:

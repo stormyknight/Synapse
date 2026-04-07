@@ -2,9 +2,12 @@
 # logicModule
 # noteLogic.py
 # pylint: disable=invalid-name
+
 from datetime import datetime
 import os
 import sqlite3
+from typing import Optional
+
 from src.databaseModule import generalDbFunctions, noteDbFunctions
 
 
@@ -14,33 +17,53 @@ def makeDefaultTitle() -> str:
     return f"Untitled Note ({timestamp})"
 
 
-def onNoteSaveClicked(title: str, content: str, databaseName:str, incommingId:int)->dict[str, str]|str:
-    """Save current note contents into synapse.db."""
+def onNoteSaveClicked(
+    title: str,
+    content: str,
+    databaseName: str,
+    noteId: Optional[int] = None
+) -> dict[str, str] | str:
+    """Insert a new note or update an existing one."""
     if not title:
-        if incommingId > 0:
+        if noteId is not None:
             return  {"title": "Cannot Save", "msg": "Error finding title."}
         title = makeDefaultTitle()
 
     if not content:
-        return  {"title": "Cannot Save", "msg": "Note content is required."}
+        return {"title": "Cannot Save", "msg": "Note content is required."}
 
     dbPath = generalDbFunctions.getDbPath(databaseName)
     if not os.path.exists(dbPath):
-        return  {"title": "Database Missing", "msg": "Database '{databaseName}' not found.\nRun setup_database.py first."}
+        return {
+            "title": "Database Missing",
+            "msg": f"Database '{databaseName}' not found.\nRun setup_database.py first."
+        }
 
+    returnMsg: str = ""
+    updated = None
     try:
         conn = generalDbFunctions.connectDb(dbPath)
         try:
             cursor = conn.cursor()
-            if incommingId < 0:
-                noteId = noteDbFunctions.addNote(cursor, title, content, "gui")
+            if noteId is None:
+                newNoteId = noteDbFunctions.addNote(cursor, title, content, "gui")
+                conn.commit()
+                returnMsg = f"Saved new note (id={newNoteId})"
             else:
-                noteId = noteDbFunctions.updateNote(cursor,incommingId,title, content)
-            conn.commit()
+                updated = noteDbFunctions.updateNote(
+                    cursor=cursor,
+                    noteId=noteId,
+                    title=title,
+                    content=content
+                )
+                conn.commit()
         finally:
             conn.close()
 
-        return (f"Saved (id={noteId})")
+        if updated:
+            returnMsg = f"Updated note (id={noteId})"
+        return returnMsg
+
     except sqlite3.Error as exc:
         return  {"title": "Database Error", "msg": f"SQLite error:\n{exc}"}
 
