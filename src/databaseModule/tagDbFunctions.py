@@ -21,14 +21,14 @@ def associateTagWithNote(cursor: sqlite3.Cursor, tagId: int,  noteId: int):
     )
     return cursor.lastrowid if cursor.lastrowid is not None else int(math.nan)
 
-def getAssociatedTagIds(cursor: sqlite3.Cursor, noteId: int)->list[int]|None:
+def getTagAssociations(cursor: sqlite3.Cursor, noteId: int)->list[int]|None:
     cursor.execute(
         f"""
-        SELECT tag_id FROM note_tags WHERE note_id = ?
+        SELECT * FROM note_tags WHERE note_id = ?
         """,
         (noteId,)
     )
-    return [idTuple[0] for idTuple in cursor.fetchall()]
+    return  cursor.fetchall()
 
 def getSelectedTags(cursor: sqlite3.Cursor, tagIds: list[int])->list[int]|None:
     placeHolders = ",".join("?" for _ in tagIds)
@@ -39,3 +39,10 @@ def getSelectedTags(cursor: sqlite3.Cursor, tagIds: list[int])->list[int]|None:
         (tagIds)
     )
     return cursor.fetchall()
+
+def getTags(cursor: sqlite3.Cursor)->list[tuple]:
+    cursor.execute("SELECT * FROM tags")
+    return cursor.fetchall()
+
+def removeTagAssociation(cursor: sqlite3.Cursor, tagAssociationId: int)->None:
+    cursor.execute("DELETE FROM note_tags WHERE id = ?", (tagAssociationId,))

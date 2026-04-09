@@ -197,7 +197,7 @@ class TagWindow(QWidget): # type: ignore
         self.layout.addWidget(self.currentTagsLabel)
         self.layout.addLayout(self.currentTagsBox)
         self.layout.addWidget(self.availableTagsLabel)
-        self.layout.addWidget(self.availableTagsBox)
+        self.layout.addLayout(self.availableTagsBox)
 
         self.setLayout(self.layout)
 
@@ -206,14 +206,14 @@ class TagWindow(QWidget): # type: ignore
         if done:
             createTagResponse: dict[str,str] | int = tagLogic.createTagHandler(name, databaseName)
             if type(createTagResponse) is int:
-                print(tagLogic.associateTagWithNoteHandler(createTagResponse, self.currentNoteId, databaseName))
+                tagLogic.associateTagWithNoteHandler(createTagResponse, self.currentNoteId, databaseName)
                 self.showCurrentTags()
 
     def showCurrentTags(self):
         clearLayout(self.currentTagsBox)
-        associatedTagIds: list[int] = tagLogic.getAssociatedTagIdsHandler(noteId=self.currentNoteId, databaseName=databaseName)
-        associatedTags: list[tuple] = tagLogic.getSelectedTagsHandler(associatedTagIds,databaseName=databaseName)
-        for tag in associatedTags:
+        tagAssociations: list[tuple] = tagLogic.getTagAssociationsHandler(noteId=self.currentNoteId, databaseName=databaseName)
+        associatedTags: list[tuple] = tagLogic.getSelectedTagsHandler([tag[2] for tag in tagAssociations],databaseName=databaseName)
+        for tag, assoc in zip(associatedTags, tagAssociations):
             tagBox: QFrame = QFrame()
             tagBox.setStyleSheet(("""
                     QFrame {
@@ -229,6 +229,7 @@ class TagWindow(QWidget): # type: ignore
             removeTagButton.setStyleSheet("color: #A5F3FF;" \
             "background-color: #000000")
             removeTagButton.setFixedSize(24,24)
+            removeTagButton.clicked.connect(lambda _, id = assoc[0]: self.removeTag(id))
 
             tagBoxLayout.addWidget(tagBoxLabel)
             tagBoxLayout.addWidget(removeTagButton)
@@ -238,9 +239,9 @@ class TagWindow(QWidget): # type: ignore
 
     def showAvailableTags(self):
         clearLayout(self.availableTagsBox)
-        associatedTagIds: list[int] = tagLogic.getAssociatedTagIdsHandler(noteId=self.currentNoteId, databaseName=databaseName)
-        associatedTags: list[tuple] = tagLogic.getSelectedTagsHandler(associatedTagIds,databaseName=databaseName)
-        for tag in associatedTags:
+        tagAssociations: list[int] = tagLogic.getTagAssociationsHandler(noteId=self.currentNoteId, databaseName=databaseName)
+        availableTags: list[tuple] = [tag for tag in tagLogic.getTagsHandler(databaseName=databaseName) if tag[0] not in [assoc[2] for assoc in tagAssociations]]
+        for tag in availableTags:
             tagBox: QFrame = QFrame()
             tagBox.setStyleSheet(("""
                     QFrame {
@@ -251,21 +252,32 @@ class TagWindow(QWidget): # type: ignore
             tagBoxLabel: QLabel = QLabel(tag[1])
             tagBoxLabel.setStyleSheet("color: #A5F3FF")
             tagBoxLayout: QHBoxLayout = QHBoxLayout()
-            removeTagButton: QPushButton = QPushButton()
-            removeTagButton.setIcon(QIcon("removeIcon.png"))
-            removeTagButton.setStyleSheet("color: #A5F3FF;" \
+            addTagButton: QPushButton = QPushButton("+")
+            addTagButton.setStyleSheet("color: #A5F3FF;" \
             "background-color: #000000")
-            removeTagButton.setFixedSize(24,24)
+            addTagButton.setFixedSize(24,24)
+            addTagButton.clicked.connect(lambda _, tid=tag[0], nid=self.currentNoteId: self.associateTag(tid,nid))
 
             tagBoxLayout.addWidget(tagBoxLabel)
-            tagBoxLayout.addWidget(removeTagButton)
+            tagBoxLayout.addWidget(addTagButton)
             tagBox.setLayout(tagBoxLayout)
 
             self.availableTagsBox.addWidget(tagBox)
 
+    def removeTag(self, tagAssociationId: int)->None:
+        tagLogic.removeTagAssociationHandler(databaseName, tagAssociationId)
+        self.showAvailableTags()
+        self.showCurrentTags()
+
+    def associateTag(self, tagId: int, noteId: int)->None:
+        tagLogic.associateTagWithNoteHandler(tagId, noteId, databaseName)
+        self.showAvailableTags()
+        self.showCurrentTags()
+
     def setCurrentNoteId(self, noteId: int):
         self.currentNoteId = noteId
         self.showCurrentTags()
+        self.showAvailableTags()
 
 
 
@@ -469,7 +481,7 @@ class MainWindow(QWidget):  # type: ignore
                 noteId: int = note[0]
                 # Makes the card shape
                 card:QFrame = QFrame()
-                card.setFixedSize(350, 300)
+                card.setFixedSize(350, 350)
                 card.setStyleSheet("""
                     QFrame {
                         background-color: #90E0EF;
@@ -519,10 +531,34 @@ class MainWindow(QWidget):  # type: ignore
                 overflowMenuButton.clicked.connect(lambda _, b=overflowMenuButton, m=noteMenu:  self.showMenu(m, b))
                 overflowMenuButton.setFixedSize(24,24)
 
+                # show tags on cards
+                tagLayout: QHBoxLayout = QHBoxLayout()
+                tags: list[tuple] = self.getTags(noteId)
+                widthCounter: int = 0
+                for tag in tags:
+                    tagBox: QFrame = QFrame()
+                    tagBox.setStyleSheet(("""
+                            QFrame {
+                                background-color: #000000;
+                                border-radius: 20px;
+                            }
+                        """))
+                    tagBoxLabel: QLabel = QLabel(tag[1])
+                    tagBoxLabel.setStyleSheet("color: #A5F3FF")
+                    tagBoxLabel.setFont(QFont("Arial", 11))
+                    tagBoxLayout: QHBoxLayout = QHBoxLayout()
+                    tagBoxLayout.addWidget(tagBoxLabel)
+                    tagBox.setLayout(tagBoxLayout)
+                    print(card.width())
+                    print(tagBox.width())
+                    tagLayout.addWidget(tagBox)
+
                 # Put text in the card, and put the card in the grid
                 cardLayout.addWidget(overflowMenuButton, alignment=Qt.AlignRight)
                 cardLayout.addWidget(titleLabel)
                 cardLayout.addWidget(previewLabel)
+                cardLayout.addStretch(1)
+                cardLayout.addLayout(tagLayout)
                 card.setLayout(cardLayout)
 
                 self.gridLayout.addWidget(card, row, col)
@@ -576,6 +612,10 @@ class MainWindow(QWidget):  # type: ignore
     def showTagWindow(self, clickedId:int)->None:
         self.newTagWindow.setCurrentNoteId(clickedId)
         self.newTagWindow.show()
+
+    def getTags(self, noteId: int)->list[tuple]:
+        tagAssociations:list[tuple] = tagLogic.getTagAssociationsHandler(noteId, databaseName)
+        return tagLogic.getSelectedTagsHandler([assoc[2] for assoc in tagAssociations], databaseName)
 
 
 def runApp() -> int:
