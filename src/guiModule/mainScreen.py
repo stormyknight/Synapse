@@ -6,13 +6,16 @@ from __future__ import annotations
 from enum import Enum
 
 from PyQt5.QtGui import QFont, QIcon, QPixmap
-from PyQt5.QtCore import QSize, Qt, QPoint
+from PyQt5.QtCore import QRect, QSize, Qt, QPoint, pyqtSignal
 from PyQt5.QtWidgets import (
     QApplication,
+    QBoxLayout,
     QHBoxLayout,
     QLabel,
     QMessageBox,
     QPushButton,
+    QSizePolicy,
+    QSpacerItem,
     QTextEdit,
     QVBoxLayout,
     QLineEdit,
@@ -22,17 +25,248 @@ from PyQt5.QtWidgets import (
     QGridLayout,
     QFrame,
     QLayout,
-    QMenu
+    QMenu,
+    QAction,
+    QInputDialog
 )
 
-from src.logicModule import noteLogic
+from src.logicModule import noteLogic, tagLogic
 
 databaseName = "synapse.db"
+
+def clearLayout( layout: QLayout)->None:
+        if layout is not None:
+            while layout.count():
+                item = layout.takeAt(0)
+                widget = item.widget()
+                if widget is not None:
+                    widget.deleteLater() # Deletes the widget
+                else:
+                    clearLayout(item.layout()) # Recursively clear nested layouts
 
 
 class Page(Enum):
     HOME = 0
     NOTE = 1
+
+class FlowLayout(QLayout):
+    """A ``QLayout`` that aranges its child widgets horizontally and
+    vertically.
+
+    If enough horizontal space is available, it looks like an ``HBoxLayout``,
+    but if enough space is lacking, it automatically wraps its children into
+    multiple rows.
+
+    """
+    heightChanged = pyqtSignal(int)
+
+    def __init__(self, parent=None, margin=0, spacing=-1):
+        super().__init__(parent)
+        if parent is not None:
+            self.setContentsMargins(margin, margin, margin, margin)
+        self.setSpacing(spacing)
+
+        self._item_list = []
+
+    def __del__(self):
+        while self.count():
+            self.takeAt(0)
+
+    def addItem(self, item):  # pylint: disable=invalid-name
+        self._item_list.append(item)
+
+    def addSpacing(self, size):  # pylint: disable=invalid-name
+        self.addItem(QSpacerItem(size, 0, QSizePolicy.Fixed, QSizePolicy.Minimum))
+
+    def count(self):
+        return len(self._item_list)
+
+    def itemAt(self, index):  # pylint: disable=invalid-name
+        if 0 <= index < len(self._item_list):
+            return self._item_list[index]
+        return None
+
+    def takeAt(self, index):  # pylint: disable=invalid-name
+        if 0 <= index < len(self._item_list):
+            return self._item_list.pop(index)
+        return None
+
+    def expandingDirections(self):  # pylint: disable=invalid-name,no-self-use
+        return Qt.Orientations(Qt.Orientation(0))
+
+    def hasHeightForWidth(self):  # pylint: disable=invalid-name,no-self-use
+        return True
+
+    def heightForWidth(self, width):  # pylint: disable=invalid-name
+        height = self._do_layout(QRect(0, 0, width, 0), True)
+        return height
+
+    def setGeometry(self, rect):  # pylint: disable=invalid-name
+        super().setGeometry(rect)
+        self._do_layout(rect, False)
+
+    def sizeHint(self):  # pylint: disable=invalid-name
+        return self.minimumSize()
+
+    def minimumSize(self):  # pylint: disable=invalid-name
+        size = QSize()
+
+        for item in self._item_list:
+            minsize = item.minimumSize()
+            extent = item.geometry().bottomRight()
+            size = size.expandedTo(QSize(minsize.width(), extent.y()))
+
+        margin = self.contentsMargins().left()
+        size += QSize(2 * margin, 2 * margin)
+        return size
+
+    def _do_layout(self, rect, test_only=False):
+        m = self.contentsMargins()
+        effective_rect = rect.adjusted(+m.left(), +m.top(), -m.right(), -m.bottom())
+        x = effective_rect.x()
+        y = effective_rect.y()
+        line_height = 0
+
+        for item in self._item_list:
+            wid = item.widget()
+
+            space_x = self.spacing()
+            space_y = self.spacing()
+            if wid is not None:
+                space_x += wid.style().layoutSpacing(
+                    QSizePolicy.PushButton, QSizePolicy.PushButton, Qt.Horizontal)
+                space_y += wid.style().layoutSpacing(
+                    QSizePolicy.PushButton, QSizePolicy.PushButton, Qt.Vertical)
+
+            next_x = x + item.sizeHint().width() + space_x
+            if next_x - space_x > effective_rect.right() and line_height > 0:
+                x = effective_rect.x()
+                y = y + line_height + space_y
+                next_x = x + item.sizeHint().width() + space_x
+                line_height = 0
+
+            if not test_only:
+                item.setGeometry(QRect(QPoint(x, y), item.sizeHint()))
+
+            x = next_x
+            line_height = max(line_height, item.sizeHint().height())
+
+        new_height = y + line_height - rect.y()
+        self.heightChanged.emit(new_height)
+        return new_height
+
+
+
+class TagWindow(QWidget): # type: ignore
+    def __init__(self) -> None:
+        super().__init__()
+        self.setWindowTitle("Add/Remove Tags")
+        self.setStyleSheet("background-color: #A5F3FF;")
+        self.setFixedSize(600,600)
+        self.currentNoteId: int = None
+
+        self.layout:QVBoxLayout = QVBoxLayout()
+
+        self.addTagLayout: QHBoxLayout = QHBoxLayout()
+
+        self.addButton: QPushButton = QPushButton("+")
+        self.addButton.setFixedSize(24,24)
+        self.addButton.setStyleSheet("" \
+        "background-color: black;" \
+        "color: #A5F3FF;" \
+        "border-radius: 12")
+        self.addButton.clicked.connect(self.getTagName)
+
+        self.addTagLabel: QLabel = QLabel('Create Tag')
+        addTagLabelFont = QFont("Arial", 18)
+        self.addTagLabel.setFont(addTagLabelFont)
+
+        self.currentTagsLabel: QLabel = QLabel('Current Tags')
+        self.currentTagsLabel.setFont(addTagLabelFont)
+
+        self.currentTagsBox: FlowLayout = FlowLayout()
+
+        self.availableTagsLabel: QLabel = QLabel('Available Tags')
+        self.availableTagsLabel.setFont(addTagLabelFont)
+
+        self.availableTagsBox: FlowLayout = FlowLayout()
+
+        self.addTagLayout.addWidget(self.addButton)
+        self.addTagLayout.addWidget(self.addTagLabel)
+        self.layout.addLayout(self.addTagLayout)
+        self.layout.addWidget(self.currentTagsLabel)
+        self.layout.addLayout(self.currentTagsBox)
+        self.layout.addWidget(self.availableTagsLabel)
+        self.layout.addWidget(self.availableTagsBox)
+
+        self.setLayout(self.layout)
+
+    def getTagName(self):
+        name, done = QInputDialog.getText(self, "Tag Name Window", "Input Tag Name")
+        if done:
+            createTagResponse: dict[str,str] | int = tagLogic.createTagHandler(name, databaseName)
+            if type(createTagResponse) is int:
+                print(tagLogic.associateTagWithNoteHandler(createTagResponse, self.currentNoteId, databaseName))
+                self.showCurrentTags()
+
+    def showCurrentTags(self):
+        clearLayout(self.currentTagsBox)
+        associatedTagIds: list[int] = tagLogic.getAssociatedTagIdsHandler(noteId=self.currentNoteId, databaseName=databaseName)
+        associatedTags: list[tuple] = tagLogic.getSelectedTagsHandler(associatedTagIds,databaseName=databaseName)
+        for tag in associatedTags:
+            tagBox: QFrame = QFrame()
+            tagBox.setStyleSheet(("""
+                    QFrame {
+                        background-color: #000000;
+                        border-radius: 20px;
+                    }
+                """))
+            tagBoxLabel: QLabel = QLabel(tag[1])
+            tagBoxLabel.setStyleSheet("color: #A5F3FF")
+            tagBoxLayout: QHBoxLayout = QHBoxLayout()
+            removeTagButton: QPushButton = QPushButton()
+            removeTagButton.setIcon(QIcon("removeIcon.png"))
+            removeTagButton.setStyleSheet("color: #A5F3FF;" \
+            "background-color: #000000")
+            removeTagButton.setFixedSize(24,24)
+
+            tagBoxLayout.addWidget(tagBoxLabel)
+            tagBoxLayout.addWidget(removeTagButton)
+            tagBox.setLayout(tagBoxLayout)
+
+            self.currentTagsBox.addWidget(tagBox)
+
+    def showAvailableTags(self):
+        clearLayout(self.availableTagsBox)
+        associatedTagIds: list[int] = tagLogic.getAssociatedTagIdsHandler(noteId=self.currentNoteId, databaseName=databaseName)
+        associatedTags: list[tuple] = tagLogic.getSelectedTagsHandler(associatedTagIds,databaseName=databaseName)
+        for tag in associatedTags:
+            tagBox: QFrame = QFrame()
+            tagBox.setStyleSheet(("""
+                    QFrame {
+                        background-color: #000000;
+                        border-radius: 20px;
+                    }
+                """))
+            tagBoxLabel: QLabel = QLabel(tag[1])
+            tagBoxLabel.setStyleSheet("color: #A5F3FF")
+            tagBoxLayout: QHBoxLayout = QHBoxLayout()
+            removeTagButton: QPushButton = QPushButton()
+            removeTagButton.setIcon(QIcon("removeIcon.png"))
+            removeTagButton.setStyleSheet("color: #A5F3FF;" \
+            "background-color: #000000")
+            removeTagButton.setFixedSize(24,24)
+
+            tagBoxLayout.addWidget(tagBoxLabel)
+            tagBoxLayout.addWidget(removeTagButton)
+            tagBox.setLayout(tagBoxLayout)
+
+            self.availableTagsBox.addWidget(tagBox)
+
+    def setCurrentNoteId(self, noteId: int):
+        self.currentNoteId = noteId
+        self.showCurrentTags()
+
 
 
 class MainWindow(QWidget):  # type: ignore
@@ -51,6 +285,9 @@ class MainWindow(QWidget):  # type: ignore
 
         # Create Stacked Widget for holding multiple pages
         self.stackedLayout: QStackedLayout = QStackedLayout()
+
+        # create window for tags
+        self.newTagWindow: TagWindow = TagWindow()
 
         # ---------------- NOTE PAGE ----------------
         self.notePage: QWidget = QWidget()
@@ -210,21 +447,11 @@ class MainWindow(QWidget):  # type: ignore
         self.stackedLayout.setCurrentIndex(Page.HOME.value)
         self.newNoteButton.raise_()
 
-    def clearLayout(self, layout: QLayout)->None:
-        if layout is not None:
-            while layout.count():
-                item = layout.takeAt(0)
-                widget = item.widget()
-                if widget is not None:
-                    widget.deleteLater() # Deletes the widget
-                else:
-                    self.clearLayout(item.layout()) # Recursively clear nested layouts
-
     def displayNotesOnHome(self) -> None:
         """Fetches notes and builds custom rounded cards in a grid."""
 
         # Groups the cards closely together
-        self.clearLayout(self.gridLayout)
+        clearLayout(self.gridLayout)
         self.gridLayout.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         self.gridLayout.setSpacing(30) # Pixel gap
 
@@ -281,7 +508,9 @@ class MainWindow(QWidget):  # type: ignore
 
                 # Add overflow menu
                 noteMenu: QMenu = QMenu(self)
-                noteMenu.addAction("Add/Remove Tags")
+                addRemoveTag: QAction = QAction("Add/Remove Tag", self)
+                addRemoveTag.triggered.connect(lambda _, id=noteId: self.showTagWindow(id))
+                noteMenu.addAction(addRemoveTag)
                 noteMenu.setLayoutDirection(Qt.RightToLeft)
 
                 # Add overflow menu button
@@ -343,6 +572,10 @@ class MainWindow(QWidget):  # type: ignore
             self.statusLabel.setText(saveResult)
             self.currentNoteId = int("".join(filter(str.isdigit, saveResult)))
             self.displayNotesOnHome()
+
+    def showTagWindow(self, clickedId:int)->None:
+        self.newTagWindow.setCurrentNoteId(clickedId)
+        self.newTagWindow.show()
 
 
 def runApp() -> int:
