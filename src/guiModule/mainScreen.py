@@ -338,10 +338,25 @@ class MainWindow(QWidget):  # type: ignore
         self.saveButton.setStyleSheet("border: none;")
         self.saveButton.clicked.connect(self.onSaveNoteClicked)
 
+        self.analyzeButton = QPushButton("Analyze Note")
+        self.analyzeButton.setStyleSheet("""
+            QPushButton {
+                background-color: #90E0EF;
+                border-radius: 10px;
+                padding: 8px 14px;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #7AD5E8;
+            }
+        """)
+        self.analyzeButton.clicked.connect(self.onAnalyzeNoteClicked)
+
         self.statusLabel = QLabel("")
         statusRowLayout = QHBoxLayout()
         statusRowLayout.addWidget(self.exitButton)
         statusRowLayout.addWidget(self.saveButton)
+        statusRowLayout.addWidget(self.analyzeButton)
         statusRowLayout.addStretch(1)
         statusRowLayout.addWidget(self.statusLabel)
 
@@ -608,6 +623,48 @@ class MainWindow(QWidget):  # type: ignore
             self.statusLabel.setText(saveResult)
             self.currentNoteId = int("".join(filter(str.isdigit, saveResult)))
             self.displayNotesOnHome()
+    
+    def onAnalyzeNoteClicked(self) -> None:
+        """Analyze the currently open note and store the results."""
+        if self.currentNoteId is None:
+            QMessageBox.warning(
+                self,
+                "Analyze Note",
+                "Please save the note before analyzing it."
+            )
+            self.statusLabel.setText("Analyze failed")
+            return
+
+        content: str = self.editableContentText.toPlainText().strip()
+        if not content:
+            QMessageBox.warning(
+                self,
+                "Analyze Note",
+                "Note content is empty."
+            )
+            self.statusLabel.setText("Analyze failed")
+            return
+
+        result = noteLogic.analyzeAndStoreNote(
+            self.currentNoteId,
+            content,
+            databaseName
+        )
+
+        if isinstance(result, dict):
+            summary = result.get("summary", "")
+            mood = result.get("mood", "")
+            tags = result.get("tags", [])
+
+            self.statusLabel.setText("Analysis saved")
+
+            QMessageBox.information(
+                self,
+                "Note Analysis",
+                f"Summary: {summary}\n\nMood: {mood}\n\nTags: {', '.join(tags) if isinstance(tags, list) else ''}"
+            )
+        else:
+            self.statusLabel.setText("Analyze failed")
 
     def showTagWindow(self, clickedId:int)->None:
         self.newTagWindow.setCurrentNoteId(clickedId)
