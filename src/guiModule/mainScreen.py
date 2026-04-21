@@ -25,11 +25,10 @@ from src.logicModule import noteLogic
 
 databaseName = "synapse.db"
 
-
 class Page(Enum):
     HOME = 0
-    NOTE = 1
-
+    NOTE = 1 
+    SETTINGS = 2
 
 # Window for notes and homepage
 class MainWindow(QWidget): # type: ignore
@@ -65,7 +64,7 @@ class MainWindow(QWidget): # type: ignore
         
             # Creating exit button to return to main screen
         self.exitButton = QPushButton("← Back to Main")
-        self.exitButton.setStyleSheet("border: None; text-align: left;")
+        self.exitButton.setStyleSheet("border: None; text-align: left; color: black;")
         exitFont: QFont = QFont("Arial", 13)
         self.exitButton.setFont(exitFont)
         self.exitButton.clicked.connect(self.goToMainScreen)
@@ -106,11 +105,57 @@ class MainWindow(QWidget): # type: ignore
 
         # Create Home Page
         self.homePage:QWidget = QWidget()
+        
+        
+        # NEW: Add settings button to home page
+        self.settingsButton = QPushButton("⚙Settings")
+        self.settingsButton.setStyleSheet("border: None; text-align: right; color: black;")
+        settingsButtonFont: QFont = QFont("Arial", 13)
+        self.settingsButton.setFont(settingsButtonFont)
+        self.settingsButton.clicked.connect(self.goToSettingsPage)
+
+        homePageLayout: QVBoxLayout = QVBoxLayout()
+        homeTopBar: QHBoxLayout = QHBoxLayout()
+        homeTopBar.addStretch(1)
+        homeTopBar.addWidget(self.settingsButton)
+        homePageLayout.addLayout(homeTopBar)
+        homePageLayout.addStretch(1)
+        self.homePage.setLayout(homePageLayout)
+
+
 
         # adding pages to stacked layout
         self.stackedLayout.addWidget(self.homePage)
         self.stackedLayout.addWidget(self.notePage)
 
+        # NEW: Create Settings Page
+        self.settingsPage: QWidget = QWidget()
+
+        # Settings page back button
+        self.settingsBackButton = QPushButton("← Back to Main")
+        self.settingsBackButton.setStyleSheet("border: None; text-align: left; color: black;")        
+        settingsBackFont: QFont = QFont("Arial", 13)
+        self.settingsBackButton.setFont(settingsBackFont)
+        self.settingsBackButton.clicked.connect(self.goToMainScreen)
+
+        # Settings page title label
+        self.settingsTitleLabel = QLabel("Settings")
+        settingsTitleFont: QFont = QFont("Arial", 26)
+        self.settingsTitleLabel.setFont(settingsTitleFont)
+        self.settingsTitleLabel.setStyleSheet("border: None;")
+
+        # Settings page layout (empty — no settings added yet)
+        settingsPageLayout: QVBoxLayout = QVBoxLayout()
+        settingsPageLayout.addWidget(self.settingsBackButton)
+        settingsPageLayout.addWidget(self.settingsTitleLabel)
+        settingsPageLayout.addStretch(1)
+
+        self.settingsPage.setLayout(settingsPageLayout)
+
+        # Add settings page to stacked layout
+        self.stackedLayout.addWidget(self.settingsPage)
+
+        
         # adding stacked layout to mainScreen
         self.setLayout(self.stackedLayout)
 
@@ -136,6 +181,10 @@ class MainWindow(QWidget): # type: ignore
         # self.editableContentText.clear()
         
         self.stackedLayout.setCurrentIndex(Page.HOME.value)
+        
+        # NEW: Navigate to settings page
+    def goToSettingsPage(self) -> None:
+        self.stackedLayout.setCurrentIndex(Page.SETTINGS.value)
 
 
     # This method calls the logic for saving on note and updates the GUI accordingly
@@ -164,4 +213,4 @@ if __name__ == "__main__":
     raise SystemExit(runApp())
 
 
-# 
+# python3 -m src.guiModule.mainScreen 2>&1
