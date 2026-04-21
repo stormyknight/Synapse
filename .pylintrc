@@ -17,5 +17,7 @@ disable =
     missing-docstring, 
     no-name-in-module,
     too-few-public-methods,
-    import-error
+    import-error,
+    too-many-statements,
+    too-many-instance-attributes,
 
