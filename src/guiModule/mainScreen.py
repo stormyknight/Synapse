@@ -45,6 +45,9 @@ class MainWindow(QWidget):  # type: ignore
         # Track whether user is editing an existing note or creating a new one
         self.currentNoteId: int | None = None
 
+        # Track the current sorting mode for the home screen grid
+        self.currentSortMode: str = "date"
+
         # Create Stacked Widget for holding multiple pages
         self.stackedLayout: QStackedLayout = QStackedLayout()
 
@@ -120,20 +123,56 @@ class MainWindow(QWidget):  # type: ignore
         self.homePage: QWidget = QWidget()
         self.homeLayout: QVBoxLayout = QVBoxLayout()
 
-        # Logo
+        # ---------------- TOP NAVIGATION BAR ----------------
+        self.topBarLayout = QHBoxLayout()
+
+        # Left: Logo & Title
+        logoTitleLayout = QHBoxLayout()
         self.logoLabel = QLabel()
         logoPixmap = QPixmap("logo_160x160.png")
-        self.logoLabel.setPixmap(logoPixmap)
-        self.logoLabel.setAlignment(Qt.AlignCenter)
-
-        # Title
+        if not logoPixmap.isNull():
+            self.logoLabel.setPixmap(logoPixmap.scaled(40, 40, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        
         self.homeTitleLabel = QLabel("Synapse")
-        homeTitleFont = QFont("Arial", 36, QFont.Bold)
-        self.homeTitleLabel.setFont(homeTitleFont)
-        self.homeTitleLabel.setAlignment(Qt.AlignCenter)
+        self.homeTitleLabel.setFont(QFont("Arial", 24, QFont.Bold)) 
+        
+        logoTitleLayout.addWidget(self.logoLabel)
+        logoTitleLayout.addWidget(self.homeTitleLabel)
 
-        self.homeLayout.addWidget(self.logoLabel)
-        self.homeLayout.addWidget(self.homeTitleLabel)
+        # Right: Sort Controls 
+        sortLabel = QLabel("Sort by")
+        sortLabel.setFont(QFont("Arial", 18, QFont.Bold)) 
+
+        self.sortContainer = QFrame()
+        self.sortContainer.setStyleSheet("background-color: rgba(130, 150, 170, 0.3); border-radius: 20px;") 
+        sortLayout = QHBoxLayout(self.sortContainer)
+        sortLayout.setContentsMargins(20, 10, 20, 10) 
+
+        self.btnSortName = QPushButton("Name")
+        self.btnSortTag = QPushButton("Tag")
+        self.btnSortDate = QPushButton("Date")
+
+        self.updateSortButtonStyles()
+
+        # Wire the buttons to update the state and refresh the screen
+        self.btnSortName.clicked.connect(lambda: self.changeSortOrder("name"))
+        self.btnSortTag.clicked.connect(lambda: self.changeSortOrder("tag"))
+        self.btnSortDate.clicked.connect(lambda: self.changeSortOrder("date"))
+
+        sortLayout.addWidget(self.btnSortName)
+        sortLayout.addWidget(self.btnSortTag)
+        sortLayout.addWidget(self.btnSortDate)
+
+        # Assemble the Top Bar
+        self.topBarLayout.addLayout(logoTitleLayout)
+        self.topBarLayout.addStretch() 
+        self.topBarLayout.addWidget(sortLabel)
+        self.topBarLayout.addSpacing(15) 
+        self.topBarLayout.addWidget(self.sortContainer)
+        self.topBarLayout.addSpacing(70)
+
+        self.homeLayout.addLayout(self.topBarLayout)
+        self.homeLayout.addSpacing(20)
 
         # Scroll Area
         self.scrollArea: QScrollArea = QScrollArea()
@@ -213,6 +252,44 @@ class MainWindow(QWidget):  # type: ignore
         self.displayNotesOnHome()
         self.stackedLayout.setCurrentIndex(Page.HOME.value)
         self.newNoteButton.raise_()
+    
+    def changeSortOrder(self, mode: str) -> None:
+        """Updates the active sort mode and refreshes the grid."""
+        self.currentSortMode = mode
+        self.updateSortButtonStyles()
+        self.displayNotesOnHome()
+    
+    def updateSortButtonStyles(self) -> None:
+        """Applies a white background to the active sort button."""
+        baseStyle = """
+            QPushButton { 
+                border: none; 
+                background: transparent; 
+                font-size: 18px; 
+                font-weight: bold;
+                padding: 5px 15px; 
+                color: black; 
+                border-radius: 12px;
+            } 
+            QPushButton:hover { color: #555555; }
+        """
+        
+        selectedStyle = """
+            QPushButton { 
+                border: none; 
+                background: black; 
+                font-size: 18px; 
+                font-weight: bold;
+                padding: 5px 15px; 
+                color: white; 
+                border-radius: 12px;
+            } 
+        """
+        
+        # Apply the selected style only to the active mode, and base style to the rest
+        self.btnSortName.setStyleSheet(selectedStyle if self.currentSortMode == "name" else baseStyle)
+        self.btnSortTag.setStyleSheet(selectedStyle if self.currentSortMode == "tag" else baseStyle)
+        self.btnSortDate.setStyleSheet(selectedStyle if self.currentSortMode == "date" else baseStyle)
 
     def displayNotesOnHome(self) -> None:
         """Fetch notes and build custom rounded cards in a grid."""
@@ -230,7 +307,26 @@ class MainWindow(QWidget):  # type: ignore
 
         dbConnection: sqlite3.Connection = sqlite3.connect(databaseName)
         cursor: sqlite3.Cursor = dbConnection.cursor()
-        cursor.execute("SELECT id, title, content FROM notes ORDER BY id DESC")
+
+        # Dynamic Query based on the current Sort Mode
+        if self.currentSortMode == "name":
+            # Alphabetical by Title
+            query = "SELECT id, title, content FROM notes ORDER BY LOWER(title) ASC"
+        elif self.currentSortMode == "tag":
+            # Joins the tags table and sorts alphabetically by the first tag attached to the note
+            query = """
+                SELECT n.id, n.title, n.content 
+                FROM notes n
+                LEFT JOIN note_tags nt ON n.id = nt.note_id
+                LEFT JOIN tags t ON nt.tag_id = t.id
+                GROUP BY n.id
+                ORDER BY MIN(t.tag_name) ASC
+            """
+        else:
+            # Default: Newest first (Date)
+            query = "SELECT id, title, content FROM notes ORDER BY id DESC"      
+
+        cursor.execute(query)
         allNotes: list = cursor.fetchall()
         dbConnection.close()
 
