@@ -3,16 +3,14 @@ import sqlite3
 from src.databaseModule import generalDbFunctions, tagDbFunctions
 
 
-def createTagHandler(name: str,  databaseName:str):
+def createTagHandler(name: str,  databaseName:str)-> int | dict[str, str]:
     dbPath = generalDbFunctions.getDbPath(databaseName)
     
     if not os.path.exists(dbPath):
-        print(2.1)
         return {
             "title": "Database Missing",
             "msg": f"Database '{databaseName}' not found.\nRun setup_database.py first."
         }
-    
     try:
         conn = generalDbFunctions.connectDb(dbPath)
         try:
@@ -22,12 +20,11 @@ def createTagHandler(name: str,  databaseName:str):
             conn.commit()
         finally:
             conn.close()
-        print(tagId)
         return tagId
     except sqlite3.Error as exc:
         return  {"title": "Database Error", "msg": f"SQLite error:\n{exc}"}
 
-def associateTagWithNoteHandler(tagId: int, noteId: int, databaseName:str):
+def associateTagWithNoteHandler(tagId: int, noteId: int, databaseName:str) -> int | dict[str, str]:
     dbPath = generalDbFunctions.getDbPath(databaseName)
     if not os.path.exists(dbPath):
         return {
@@ -48,7 +45,7 @@ def associateTagWithNoteHandler(tagId: int, noteId: int, databaseName:str):
     except sqlite3.Error as exc:
         return  {"title": "Database Error", "msg": f"SQLite error:\n{exc}"}
     
-def getTagAssociationsHandler(noteId: int, databaseName:str)->list[tuple]|dict[str,str]:
+def getTagAssociationsHandler(noteId: int, databaseName:str)-> list[tuple] | dict[str,str]:
     dbPath = generalDbFunctions.getDbPath(databaseName)
     if not os.path.exists(dbPath):
         return {
@@ -68,7 +65,7 @@ def getTagAssociationsHandler(noteId: int, databaseName:str)->list[tuple]|dict[s
         return  {"title": "Database Error", "msg": f"SQLite error:\n{exc}"}
     
 
-def getSelectedTagsHandler(tagIds: list[int], databaseName:str)->list[tuple]|dict[str,str]:
+def getSelectedTagsHandler(tagIds: list[int], databaseName:str)->list[tuple] | dict[str,str]:
     dbPath = generalDbFunctions.getDbPath(databaseName)
     if not os.path.exists(dbPath):
         return {

@@ -109,7 +109,7 @@ def test_adjustMainPageColumnMax()->None:
 def test_clearLayout()->None:
     testMainScreen: mainScreen.MainWindow = mainScreen.MainWindow()
     testMainScreen.homeLayout.addLayout(QHBoxLayout())
-    testMainScreen.clearLayout(testMainScreen.homeLayout)
+    mainScreen.clearLayout(testMainScreen.homeLayout)
     assert testMainScreen.homeLayout.count() == 0
 
 

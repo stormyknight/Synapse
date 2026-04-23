@@ -49,6 +49,7 @@ class Page(Enum):
     HOME = 0
     NOTE = 1
 
+# a custom layout I found online that will expand horizontally and vertically to fit content and container
 class FlowLayout(QLayout):
     """A ``QLayout`` that aranges its child widgets horizontally and
     vertically.
@@ -158,17 +159,27 @@ class FlowLayout(QLayout):
 
 
 class TagWindow(QWidget): # type: ignore
-    def __init__(self) -> None:
+    mainWindow: MainWindow
+    def __init__(self, mainWindow: MainWindow) -> None: # mainWindow is passed as parameter so mainWindow can update with tag changes.
         super().__init__()
+        # Set Window attributes
         self.setWindowTitle("Add/Remove Tags")
         self.setStyleSheet("background-color: #A5F3FF;")
         self.setFixedSize(600,600)
+
+        # ID of not that window was opened for
         self.currentNoteId: int = None
 
+        # setting local mainWindow to parameter
+        self.mainWindow = mainWindow
+
+        # window layout
         self.layout:QVBoxLayout = QVBoxLayout()
 
+        # Layout for add tag row
         self.addTagLayout: QHBoxLayout = QHBoxLayout()
 
+        # Button for creating a new tag and assigning it to the note
         self.addButton: QPushButton = QPushButton("+")
         self.addButton.setFixedSize(24,24)
         self.addButton.setStyleSheet("" \
@@ -177,71 +188,151 @@ class TagWindow(QWidget): # type: ignore
         "border-radius: 12")
         self.addButton.clicked.connect(self.getTagName)
 
+        # Text for creating a new tag and assigning it to the note
         self.addTagLabel: QLabel = QLabel('Create Tag')
         addTagLabelFont = QFont("Arial", 18)
         self.addTagLabel.setFont(addTagLabelFont)
 
+        # text for tags currently assigned to note
         self.currentTagsLabel: QLabel = QLabel('Current Tags')
         self.currentTagsLabel.setFont(addTagLabelFont)
 
         self.currentTagsBox: FlowLayout = FlowLayout()
+       # Current Tags Scroll Area
+        self.currentTagsScrollArea: QScrollArea = QScrollArea()
+        self.currentTagsScrollArea.setWidgetResizable(True)
+        self.currentTagsScrollArea.setStyleSheet("border: none; background-color: transparent;")
+        self.currentTagsScrollArea.setFixedHeight(200)
 
+        # Current Tags Grid container
+        self.currentTagsScrollContainer: QWidget = QWidget()
+        self.currentTagsScrollContainer.setStyleSheet("background-color: transparent;")
+
+        self.gridLayout: QGridLayout = QGridLayout()
+        self.currentTagsScrollContainer.setLayout(self.currentTagsBox)
+
+        # Put the container inside the scroll area for Current Tags
+        self.currentTagsScrollArea.setWidget(self.currentTagsScrollContainer)
+
+        # text header for tags not assigned to note
         self.availableTagsLabel: QLabel = QLabel('Available Tags')
         self.availableTagsLabel.setFont(addTagLabelFont)
 
         self.availableTagsBox: FlowLayout = FlowLayout()
 
+        # Available Tags Scroll Area
+        self.availableTagsScrollArea: QScrollArea = QScrollArea()
+        self.availableTagsScrollArea.setWidgetResizable(True)
+        self.availableTagsScrollArea.setStyleSheet("border: none; background-color: transparent;")
+
+        # Available Tags Grid container
+        self.availableTagsScrollContainer: QWidget = QWidget()
+        self.availableTagsScrollContainer.setStyleSheet("background-color: transparent;")
+
+        self.gridLayout: QGridLayout = QGridLayout()
+        self.availableTagsScrollContainer.setLayout(self.availableTagsBox)
+
+        # Put the container inside the scroll area for Available Tags
+        self.availableTagsScrollArea.setWidget(self.availableTagsScrollContainer)
+
+
         self.addTagLayout.addWidget(self.addButton)
         self.addTagLayout.addWidget(self.addTagLabel)
+
+        # adding all components to main layout
         self.layout.addLayout(self.addTagLayout)
         self.layout.addWidget(self.currentTagsLabel)
-        self.layout.addLayout(self.currentTagsBox)
+        self.layout.addWidget(self.currentTagsScrollArea)
         self.layout.addWidget(self.availableTagsLabel)
-        self.layout.addLayout(self.availableTagsBox)
+        self.layout.addWidget(self.availableTagsScrollArea)
 
         self.setLayout(self.layout)
 
+    # Function to get name of tag to be created. When ok is clicked (done is true), the tag is created and associated with the note 
     def getTagName(self):
+        # get tag name and confirmation form input box
         name, done = QInputDialog.getText(self, "Tag Name Window", "Input Tag Name")
         if done:
             createTagResponse: dict[str,str] | int = tagLogic.createTagHandler(name, databaseName)
+            # check for create tag success
             if type(createTagResponse) is int:
-                tagLogic.associateTagWithNoteHandler(createTagResponse, self.currentNoteId, databaseName)
-                self.showCurrentTags()
+                assoicateTagResponse: int | dict[str,str] = tagLogic.associateTagWithNoteHandler(createTagResponse, self.currentNoteId, databaseName)
+                # check associate tag successful
+                if type(assoicateTagResponse) is int:
+                    self.showCurrentTags()
+                    self.mainWindow.displayNotesOnHome()
+                else: 
+                    # error popup for failed tag association
+                    QMessageBox.critical(self, assoicateTagResponse["title"], assoicateTagResponse["msg"])
+            else:
+                # error popup for failed tag creation
+                QMessageBox.critical(self, createTagResponse["title"], createTagResponse["msg"])
 
+    # fetches and displays tags associated with note
     def showCurrentTags(self):
         clearLayout(self.currentTagsBox)
-        tagAssociations: list[tuple] = tagLogic.getTagAssociationsHandler(noteId=self.currentNoteId, databaseName=databaseName)
-        associatedTags: list[tuple] = tagLogic.getSelectedTagsHandler([tag[2] for tag in tagAssociations],databaseName=databaseName)
-        for tag, assoc in zip(associatedTags, tagAssociations):
-            tagBox: QFrame = QFrame()
-            tagBox.setStyleSheet(("""
-                    QFrame {
-                        background-color: #000000;
-                        border-radius: 20px;
-                    }
-                """))
-            tagBoxLabel: QLabel = QLabel(tag[1])
-            tagBoxLabel.setStyleSheet("color: #A5F3FF")
-            tagBoxLayout: QHBoxLayout = QHBoxLayout()
-            removeTagButton: QPushButton = QPushButton()
-            removeTagButton.setIcon(QIcon("removeIcon.png"))
-            removeTagButton.setStyleSheet("color: #A5F3FF;" \
-            "background-color: #000000")
-            removeTagButton.setFixedSize(24,24)
-            removeTagButton.clicked.connect(lambda _, id = assoc[0]: self.removeTag(id))
+        tagAssociations: list[tuple] | dict[str,str] = tagLogic.getTagAssociationsHandler(noteId=self.currentNoteId, databaseName=databaseName)
+        # check that fetch tag associations succeeded
+        if type(tagAssociations) is dict[str, str]:
+             QMessageBox.critical(self, tagAssociations["title"], tagAssociations["msg"])
 
-            tagBoxLayout.addWidget(tagBoxLabel)
-            tagBoxLayout.addWidget(removeTagButton)
-            tagBox.setLayout(tagBoxLayout)
+        # "[tag[2] for tag in tagAssociations]" is a list comprehension that return an array of tag IDs
+        associatedTags: list[tuple] | dict[str,str] = tagLogic.getSelectedTagsHandler([tag[2] for tag in tagAssociations],databaseName=databaseName)
+        # check that fetch selected tags succeeded
+        if type(associatedTags) is dict[str, str]:
+             QMessageBox.critical(self, associatedTags["title"], associatedTags["msg"])
 
-            self.currentTagsBox.addWidget(tagBox)
+        # iterate through both tags and tag-note associations to display tags associated notes
+        if type(associatedTags) is int and type(tagAssociations) is int:
+            for tag, assoc in zip(associatedTags, tagAssociations):
+                # create box to display individual tags
+                tagBox: QFrame = QFrame()
+                tagBox.setStyleSheet(("""
+                        QFrame {
+                            background-color: #000000;
+                            border-radius: 20px;
+                        }
+                    """))
+                
+                # text for tag name
+                tagBoxLabel: QLabel = QLabel(tag[1])
+                tagBoxLabel.setStyleSheet("color: #A5F3FF")
+
+                # layout for tag to be added to tagBox QFrame
+                tagBoxLayout: QHBoxLayout = QHBoxLayout()
+
+                # Button for de-associating tag from note
+                removeTagButton: QPushButton = QPushButton()
+                removeTagButton.setIcon(QIcon("removeIcon.png"))
+                removeTagButton.setStyleSheet("color: #A5F3FF;" \
+                "background-color: #000000")
+                removeTagButton.setFixedSize(24,24)
+                removeTagButton.clicked.connect(lambda _, id = assoc[0]: self.removeTag(id))
+
+                # adding components to tag box
+                tagBoxLayout.addWidget(tagBoxLabel)
+                tagBoxLayout.addWidget(removeTagButton)
+                tagBox.setLayout(tagBoxLayout)
+
+                # adding add tagBox to current tags space
+                self.currentTagsBox.addWidget(tagBox)
 
     def showAvailableTags(self):
         clearLayout(self.availableTagsBox)
-        tagAssociations: list[int] = tagLogic.getTagAssociationsHandler(noteId=self.currentNoteId, databaseName=databaseName)
+        tagAssociations: list[tuple] | dict[str,str] = tagLogic.getTagAssociationsHandler(noteId=self.currentNoteId, databaseName=databaseName)
+        # check that fetch tag associations succeeded
+        if type(tagAssociations) is dict[str, str]:
+             QMessageBox.critical(self, tagAssociations["title"], tagAssociations["msg"])
+
+        # "[tag for tag in tagLogic.getTagsHandler(databaseName=databaseName) if tag[0] not in [assoc[2] for assoc in tagAssociations]]" is a list comprehension that returns all tags not associated with note
         availableTags: list[tuple] = [tag for tag in tagLogic.getTagsHandler(databaseName=databaseName) if tag[0] not in [assoc[2] for assoc in tagAssociations]]
+        # check that fetch selected tags succeeded
+        if type(availableTags) is dict[str, str]:
+             QMessageBox.critical(self, availableTags["title"], availableTags["msg"])
+        
+        # iterate through unassociated tags to diplay them
         for tag in availableTags:
+            # create frame for tags
             tagBox: QFrame = QFrame()
             tagBox.setStyleSheet(("""
                     QFrame {
@@ -249,30 +340,51 @@ class TagWindow(QWidget): # type: ignore
                         border-radius: 20px;
                     }
                 """))
+            
+            # text for tag name
             tagBoxLabel: QLabel = QLabel(tag[1])
             tagBoxLabel.setStyleSheet("color: #A5F3FF")
+
+            # layout for frame
             tagBoxLayout: QHBoxLayout = QHBoxLayout()
+
+            # button to associate tag with note
             addTagButton: QPushButton = QPushButton("+")
             addTagButton.setStyleSheet("color: #A5F3FF;" \
             "background-color: #000000")
             addTagButton.setFixedSize(24,24)
             addTagButton.clicked.connect(lambda _, tid=tag[0], nid=self.currentNoteId: self.associateTag(tid,nid))
 
+            # adding components to frame
             tagBoxLayout.addWidget(tagBoxLabel)
             tagBoxLayout.addWidget(addTagButton)
             tagBox.setLayout(tagBoxLayout)
 
             self.availableTagsBox.addWidget(tagBox)
 
+    # de-associates tag from note
     def removeTag(self, tagAssociationId: int)->None:
-        tagLogic.removeTagAssociationHandler(databaseName, tagAssociationId)
-        self.showAvailableTags()
-        self.showCurrentTags()
+        removeTagAssociationResponse: None | dict[str, str] = tagLogic.removeTagAssociationHandler(databaseName, tagAssociationId)
 
+        # check removeTagAssociation was successful
+        if type(removeTagAssociationResponse) == dict[str, str]:
+            QMessageBox.critical(self, removeTagAssociationResponse["title"], removeTagAssociationResponse["msg"])
+        else:
+            self.showAvailableTags()
+            self.showCurrentTags()
+            self.mainWindow.displayNotesOnHome()
+
+    # associates tag with note
     def associateTag(self, tagId: int, noteId: int)->None:
-        tagLogic.associateTagWithNoteHandler(tagId, noteId, databaseName)
-        self.showAvailableTags()
-        self.showCurrentTags()
+        associateTagResponse: None | dict[str, str] = tagLogic.associateTagWithNoteHandler(tagId, noteId, databaseName)
+        
+         # check removeTagAssociation was successful
+        if type(associateTagResponse) == dict[str, str]:
+            QMessageBox.critical(self, associateTagResponse["title"], associateTagResponse["msg"])
+        else:
+            self.showAvailableTags()
+            self.showCurrentTags()
+            self.mainWindow.displayNotesOnHome()
 
     def setCurrentNoteId(self, noteId: int):
         self.currentNoteId = noteId
@@ -299,7 +411,7 @@ class MainWindow(QWidget):  # type: ignore
         self.stackedLayout: QStackedLayout = QStackedLayout()
 
         # create window for tags
-        self.newTagWindow: TagWindow = TagWindow()
+        self.newTagWindow: TagWindow = TagWindow(self)
 
         # ---------------- NOTE PAGE ----------------
         self.notePage: QWidget = QWidget()
@@ -459,6 +571,9 @@ class MainWindow(QWidget):  # type: ignore
 
         QWidget.resizeEvent(self, event)
 
+    def closeEvent(self, event):
+        self.newTagWindow.close()
+
     def createNewNote(self) -> None:
         """Open a blank note editor."""
         self.currentNoteId = None
@@ -552,21 +667,59 @@ class MainWindow(QWidget):  # type: ignore
                 widthCounter: int = 0
                 for tag in tags:
                     tagBox: QFrame = QFrame()
+                    ellipsisBox: QFrame = QFrame()
+                    oldWidthCounter: int = widthCounter
+                    if widthCounter != 0:
+                        widthCounter += 5
+                    widthCounter += len(tag[1])
                     tagBox.setStyleSheet(("""
                             QFrame {
                                 background-color: #000000;
                                 border-radius: 20px;
                             }
                         """))
+                
                     tagBoxLabel: QLabel = QLabel(tag[1])
                     tagBoxLabel.setStyleSheet("color: #A5F3FF")
                     tagBoxLabel.setFont(QFont("Arial", 11))
                     tagBoxLayout: QHBoxLayout = QHBoxLayout()
-                    tagBoxLayout.addWidget(tagBoxLabel)
+
+                    # create show more tags box
+                    ellipsisBox.setStyleSheet(("""
+                            QFrame {
+                                background-color: #000000;
+                                border-radius: 20px;
+                            }
+                        """))
+
+                    # "text" for show more tags box
+                    ellipsisBoxLabel: QLabel = QLabel("···")
+                    ellipsisBoxLabel.setStyleSheet("color: #A5F3FF")
+                    ellipsisBoxLabel.setFont(QFont("Arial", 11))
+
+                    # layout for show more tags box
+                    ellipsisBoxLayout: QHBoxLayout = QHBoxLayout()
+                    ellipsisBoxLayout.addWidget(ellipsisBoxLabel)
+
+                    tagBoxLayout.addWidget(tagBoxLabel, alignment=Qt.AlignCenter)
                     tagBox.setLayout(tagBoxLayout)
-                    print(card.width())
-                    print(tagBox.width())
-                    tagLayout.addWidget(tagBox)
+
+                    ellipsisBox.setLayout(ellipsisBoxLayout)
+
+                    # click event to show add/tags window
+                    ellipsisBox.mousePressEvent = lambda event, id=noteId: self.showTagWindow(id)
+                    ellipsisBox.setFixedWidth(50)
+
+                    # if statements to determine whether to add show more tags box and truncate tags
+                    if widthCounter > 25 and oldWidthCounter != 0:
+                        tagLayout.addWidget(ellipsisBox)
+                        break
+                    elif widthCounter > 25 and oldWidthCounter == 0:
+                            tagBoxLabel.setText(tag[1][:17]+"...")
+                            tagLayout.addWidget(tagBox)
+                            tagLayout.addWidget(ellipsisBox)
+                    else:
+                        tagLayout.addWidget(tagBox)
 
                 # Put text in the card, and put the card in the grid
                 cardLayout.addWidget(overflowMenuButton, alignment=Qt.AlignRight)
