@@ -48,6 +48,9 @@ class MainWindow(QWidget):  # type: ignore
         # Track the current sorting mode for the home screen grid
         self.currentSortMode: str = "date"
 
+        # Tracking the search options
+        self.currentSearchMode: str = "name"
+
         # Create Stacked Widget for holding multiple pages
         self.stackedLayout: QStackedLayout = QStackedLayout()
 
@@ -177,6 +180,8 @@ class MainWindow(QWidget):  # type: ignore
             }
         """)
 
+        self.searchModeButton.clicked.connect(self.toggleSearchMode)
+
         # Right: Sort Controls
         sortLabel = QLabel("Sort by")
         sortLabel.setFont(QFont("Arial", 18, QFont.Bold))
@@ -203,22 +208,21 @@ class MainWindow(QWidget):  # type: ignore
 
         # Assemble the Top Bar
         self.topBarLayout.addLayout(logoTitleLayout)
-
-        self.topBarLayout.addLayout(logoTitleLayout)
-
-        self.topBarLayout.addSpacing(40)
+        self.topBarLayout.addStretch()
 
         self.topBarLayout.addWidget(self.searchInput)
         self.topBarLayout.addSpacing(10)
         self.topBarLayout.addWidget(self.byLabel)
+        self.topBarLayout.addSpacing(10)
         self.topBarLayout.addWidget(self.searchModeButton)
 
-        self.topBarLayout.addStretch()
+        self.topBarLayout.addSpacing(25)
 
         self.topBarLayout.addWidget(sortLabel)
         self.topBarLayout.addSpacing(10)
         self.topBarLayout.addWidget(self.sortContainer)
-        self.topBarLayout.addSpacing(30)
+
+        self.topBarLayout.addSpacing(50)
 
         self.homeLayout.addLayout(self.topBarLayout)
         self.homeLayout.addSpacing(20)
@@ -307,6 +311,17 @@ class MainWindow(QWidget):  # type: ignore
         self.currentSortMode = mode
         self.updateSortButtonStyles()
         self.displayNotesOnHome()
+
+    def toggleSearchMode(self) -> None:
+        """Toggle search mode between note name/content and tag."""
+        if self.currentSearchMode == "name":
+            self.currentSearchMode = "tag"
+            self.searchModeButton.setText("Tag ⌄")
+        else:
+            self.currentSearchMode = "name"
+            self.searchModeButton.setText("Name ⌄")
+
+        self.displayNotesOnHome()
    
     def updateSortButtonStyles(self) -> None:
         """Applies a white background to the active sort button."""
@@ -363,29 +378,53 @@ class MainWindow(QWidget):  # type: ignore
 
         if self.currentSortMode == "name":
             if searchText:
-                query = """
-                SELECT id, title, content
-                FROM notes
-                WHERE title LIKE ? OR content LIKE ?
-                ORDER BY LOWER(title) ASC
-                """
-                params = (searchParam, searchParam)
+                if self.currentSearchMode == "tag":
+                    query = """
+                    SELECT n.id, n.title, n.content
+                    FROM notes n
+                    LEFT JOIN note_tags nt ON n.id = nt.note_id
+                    LEFT JOIN tags t ON nt.tag_id = t.id
+                    WHERE t.tag_name LIKE ?
+                    GROUP BY n.id
+                    ORDER BY LOWER(n.title) ASC
+                    """
+                    params = (searchParam,)
+                else:
+                    query = """
+                    SELECT id, title, content
+                    FROM notes
+                    WHERE title LIKE ? OR content LIKE ?
+                    ORDER BY LOWER(title) ASC
+                    """
+                    params = (searchParam, searchParam)
             else:
                 query = "SELECT id, title, content FROM notes ORDER BY LOWER(title) ASC"
                 params = ()
 
         elif self.currentSortMode == "tag":
             if searchText:
-                query = """
-                SELECT n.id, n.title, n.content
-                FROM notes n
-                LEFT JOIN note_tags nt ON n.id = nt.note_id
-                LEFT JOIN tags t ON nt.tag_id = t.id
-                WHERE n.title LIKE ? OR n.content LIKE ?
-                GROUP BY n.id
-                ORDER BY MIN(t.tag_name) ASC
-                """
-                params = (searchParam, searchParam)
+                if self.currentSearchMode == "tag":
+                    query = """
+                    SELECT n.id, n.title, n.content
+                    FROM notes n
+                    LEFT JOIN note_tags nt ON n.id = nt.note_id
+                    LEFT JOIN tags t ON nt.tag_id = t.id
+                    WHERE t.tag_name LIKE ?
+                    GROUP BY n.id
+                    ORDER BY MIN(t.tag_name) ASC
+                    """
+                    params = (searchParam,)
+                else:
+                    query = """
+                    SELECT n.id, n.title, n.content
+                    FROM notes n
+                    LEFT JOIN note_tags nt ON n.id = nt.note_id
+                    LEFT JOIN tags t ON nt.tag_id = t.id
+                    WHERE n.title LIKE ? OR n.content LIKE ?
+                    GROUP BY n.id
+                    ORDER BY MIN(t.tag_name) ASC
+                    """
+                    params = (searchParam, searchParam)
             else:
                 query = """
                 SELECT n.id, n.title, n.content
@@ -399,13 +438,25 @@ class MainWindow(QWidget):  # type: ignore
 
         else:
             if searchText:
-                query = """
-                SELECT id, title, content
-                FROM notes
-                WHERE title LIKE ? OR content LIKE ?
-                ORDER BY id DESC
-                """
-                params = (searchParam, searchParam)
+                if self.currentSearchMode == "tag":
+                    query = """
+                    SELECT n.id, n.title, n.content
+                    FROM notes n
+                    LEFT JOIN note_tags nt ON n.id = nt.note_id
+                    LEFT JOIN tags t ON nt.tag_id = t.id
+                    WHERE t.tag_name LIKE ?
+                    GROUP BY n.id
+                    ORDER BY n.id DESC
+                    """
+                    params = (searchParam,)
+                else:
+                    query = """
+                    SELECT id, title, content
+                    FROM notes
+                    WHERE title LIKE ? OR content LIKE ?
+                    ORDER BY id DESC
+                    """
+                    params = (searchParam, searchParam)
             else:
                 query = "SELECT id, title, content FROM notes ORDER BY id DESC"
                 params = ()
