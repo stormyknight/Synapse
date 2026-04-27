@@ -686,7 +686,7 @@ class MainWindow(QWidget):  # type: ignore
             elif self.currentSortMode == "tag":
                 allNotes.sort(key = lambda note: self.sortByTag(self.getTags(note[0]))) # type: ignore[arg-type]
             else:
-                allNotes.sort(key=lambda note: note[3])
+                allNotes.sort(key=lambda note: note[0], reverse=True)
 
             # Builds a card for each note
             for note in allNotes:
