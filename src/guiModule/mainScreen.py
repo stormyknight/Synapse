@@ -49,6 +49,7 @@ def clearLayout( layout: QLayout)->None:
 class Page(Enum):
     HOME = 0
     NOTE = 1
+    SETTINGS = 2 
 
 
 # a custom layout I found online that will expand horizontally and vertically to fit content and container
@@ -556,6 +557,36 @@ class MainWindow(QWidget):  # type: ignore
         # ---------------- STACK ----------------
         self.stackedLayout.addWidget(self.homePage)
         self.stackedLayout.addWidget(self.notePage)
+
+        # NEW: Create Settings Page
+        self.settingsPage: QWidget = QWidget()
+
+        # Settings page back button
+        self.settingsBackButton = QPushButton("← Back to Main")
+        self.settingsBackButton.setStyleSheet("border: None; text-align: left; color: black;")        
+        settingsBackFont: QFont = QFont("Arial", 13)
+        self.settingsBackButton.setFont(settingsBackFont)
+        self.settingsBackButton.clicked.connect(self.goToMainScreen)
+
+        # Settings page title label
+        self.settingsTitleLabel = QLabel("Settings")
+        settingsTitleFont: QFont = QFont("Arial", 26)
+        self.settingsTitleLabel.setFont(settingsTitleFont)
+        self.settingsTitleLabel.setStyleSheet("border: None;")
+
+        # Settings page layout (empty — no settings added yet)
+        settingsPageLayout: QVBoxLayout = QVBoxLayout()
+        settingsPageLayout.addWidget(self.settingsBackButton)
+        settingsPageLayout.addWidget(self.settingsTitleLabel)
+        settingsPageLayout.addStretch(1)
+
+        self.settingsPage.setLayout(settingsPageLayout)
+
+        # Add settings page to stacked layout
+        self.stackedLayout.addWidget(self.settingsPage)
+
+        
+        # adding stacked layout to mainScreen
         self.setLayout(self.stackedLayout)
 
         # ---------------- FLOATING NEW NOTE BUTTON ----------------
@@ -625,6 +656,10 @@ class MainWindow(QWidget):  # type: ignore
         self.displayNotesOnHome()
         self.currentNoteId = None
         self.stackedLayout.setCurrentIndex(Page.HOME.value)
+        
+        # NEW: Navigate to settings page
+    def goToSettingsPage(self) -> None:
+        self.stackedLayout.setCurrentIndex(Page.SETTINGS.value)
         self.newNoteButton.raise_()
 
     def changeSortOrder(self, mode: str) -> None:
