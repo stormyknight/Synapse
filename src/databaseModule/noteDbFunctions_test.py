@@ -25,6 +25,7 @@ def test_updateNotes()->None:
     dummyCursor.execute.assert_called()
 
 
+# pylint: disable=invalid-name
 def test_getNotes()->None:
     # mock cursor
     dummyCursor = MagicMock(spec=sqlite3.Cursor)
@@ -33,9 +34,28 @@ def test_getNotes()->None:
     dummyCursor.execute.assert_called()
 
 
+# pylint: disable=invalid-name
 def test_getNote()->None:
     # mock cursor
     dummyCursor = MagicMock(spec=sqlite3.Cursor)
     dummyCursor.execute = MagicMock()
     noteDbFunctions.getNote(dummyCursor, 1)
+    dummyCursor.execute.assert_called()
+
+
+# pylint: disable=invalid-name
+def test_deleteAnalysis() -> None:
+    # mock cursor
+    dummyCursor = MagicMock(spec=sqlite3.Cursor)
+    dummyCursor.execute = MagicMock()
+    noteDbFunctions.deleteAnalysis(dummyCursor, 1)
+    dummyCursor.execute.assert_called()
+
+
+# pylint: disable=invalid-name
+def test_addAnalysis() -> None:
+    # mock cursor
+    dummyCursor = MagicMock(spec=sqlite3.Cursor)
+    dummyCursor.execute = MagicMock()
+    noteDbFunctions.addAnalysis(dummyCursor, 1, "summary", "mName", "V2", "output", "Json", "hash")
     dummyCursor.execute.assert_called()

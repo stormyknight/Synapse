@@ -4,12 +4,12 @@
 
 from __future__ import annotations
 from enum import Enum
+from typing import Any
 
 from PyQt5.QtGui import QFont, QIcon, QPixmap
 from PyQt5.QtCore import QRect, QSize, Qt, QPoint, pyqtSignal
 from PyQt5.QtWidgets import (
     QApplication,
-    QBoxLayout,
     QHBoxLayout,
     QLabel,
     QMessageBox,
@@ -34,23 +34,25 @@ from src.logicModule import noteLogic, tagLogic
 
 databaseName = "synapse.db"
 
+
 def clearLayout( layout: QLayout)->None:
-        if layout is not None:
-            while layout.count():
-                item = layout.takeAt(0)
-                widget = item.widget()
-                if widget is not None:
-                    widget.deleteLater() # Deletes the widget
-                else:
-                    clearLayout(item.layout()) # Recursively clear nested layouts
+    if layout is not None:
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater() # Deletes the widget
+            else:
+                clearLayout(item.layout()) # Recursively clear nested layouts
 
 
 class Page(Enum):
     HOME = 0
     NOTE = 1
 
+
 # a custom layout I found online that will expand horizontally and vertically to fit content and container
-class FlowLayout(QLayout):
+class FlowLayout(QLayout): # type: ignore
     """A ``QLayout`` that aranges its child widgets horizontally and
     vertically.
 
@@ -61,58 +63,59 @@ class FlowLayout(QLayout):
     """
     heightChanged = pyqtSignal(int)
 
-    def __init__(self, parent=None, margin=0, spacing=-1):
+    def __init__(self, parent=None, margin=0, spacing=-1) -> None: # type: ignore[no-untyped-def]
         super().__init__(parent)
         if parent is not None:
             self.setContentsMargins(margin, margin, margin, margin)
         self.setSpacing(spacing)
 
-        self._item_list = []
+        self._itemList: list = []  # type: ignore[type-arg]
 
-    def __del__(self):
+    def __del__(self) -> None:
         while self.count():
             self.takeAt(0)
 
-    def addItem(self, item):  # pylint: disable=invalid-name
-        self._item_list.append(item)
+    def addItem(self, item) -> None:  # type: ignore[no-untyped-def]
 
-    def addSpacing(self, size):  # pylint: disable=invalid-name
+        self._itemList.append(item)
+
+    def addSpacing(self, size) -> None:  # type: ignore[no-untyped-def]
         self.addItem(QSpacerItem(size, 0, QSizePolicy.Fixed, QSizePolicy.Minimum))
 
-    def count(self):
-        return len(self._item_list)
+    def count(self) -> int:
+        return len(self._itemList)
 
-    def itemAt(self, index):  # pylint: disable=invalid-name
-        if 0 <= index < len(self._item_list):
-            return self._item_list[index]
+    def itemAt(self, index) -> Any:  # type: ignore[no-untyped-def]
+        if 0 <= index < len(self._itemList):
+            return self._itemList[index]
         return None
 
-    def takeAt(self, index):  # pylint: disable=invalid-name
-        if 0 <= index < len(self._item_list):
-            return self._item_list.pop(index)
+    def takeAt(self, index) -> Any | None:  # type: ignore[no-untyped-def]
+        if 0 <= index < len(self._itemList):
+            return self._itemList.pop(index)
         return None
 
-    def expandingDirections(self):  # pylint: disable=invalid-name,no-self-use
+    def expandingDirections(self) -> Qt.Orientations:
         return Qt.Orientations(Qt.Orientation(0))
 
-    def hasHeightForWidth(self):  # pylint: disable=invalid-name,no-self-use
+    def hasHeightForWidth(self) -> bool:
         return True
 
-    def heightForWidth(self, width):  # pylint: disable=invalid-name
-        height = self._do_layout(QRect(0, 0, width, 0), True)
+    def heightForWidth(self, width) -> Any: # type: ignore[no-untyped-def]
+        height = self._doLayout(QRect(0, 0, width, 0), True)
         return height
 
-    def setGeometry(self, rect):  # pylint: disable=invalid-name
+    def setGeometry(self, rect) -> None:  # type: ignore[no-untyped-def]
         super().setGeometry(rect)
-        self._do_layout(rect, False)
+        self._doLayout(rect, False)
 
-    def sizeHint(self):  # pylint: disable=invalid-name
+    def sizeHint(self) -> QSize:  # pylint: disable=invalid-name
         return self.minimumSize()
 
-    def minimumSize(self):  # pylint: disable=invalid-name
+    def minimumSize(self) -> QSize:  # pylint: disable=invalid-name
         size = QSize()
 
-        for item in self._item_list:
+        for item in self._itemList:
             minsize = item.minimumSize()
             extent = item.geometry().bottomRight()
             size = size.expandedTo(QSize(minsize.width(), extent.y()))
@@ -121,45 +124,45 @@ class FlowLayout(QLayout):
         size += QSize(2 * margin, 2 * margin)
         return size
 
-    def _do_layout(self, rect, test_only=False):
+    def _doLayout(self, rect, testOnly=False) -> Any: # type: ignore  [no-untyped-def]
         m = self.contentsMargins()
-        effective_rect = rect.adjusted(+m.left(), +m.top(), -m.right(), -m.bottom())
-        x = effective_rect.x()
-        y = effective_rect.y()
-        line_height = 0
+        effectiveRect = rect.adjusted(+m.left(), +m.top(), -m.right(), -m.bottom())
+        x = effectiveRect.x()
+        y = effectiveRect.y()
+        lineHeight = 0
 
-        for item in self._item_list:
+        for item in self._itemList:
             wid = item.widget()
 
-            space_x = self.spacing()
-            space_y = self.spacing()
+            spaceX = self.spacing()
+            spaceY = self.spacing()
             if wid is not None:
-                space_x += wid.style().layoutSpacing(
+                spaceX += wid.style().layoutSpacing(
                     QSizePolicy.PushButton, QSizePolicy.PushButton, Qt.Horizontal)
-                space_y += wid.style().layoutSpacing(
+                spaceY += wid.style().layoutSpacing(
                     QSizePolicy.PushButton, QSizePolicy.PushButton, Qt.Vertical)
 
-            next_x = x + item.sizeHint().width() + space_x
-            if next_x - space_x > effective_rect.right() and line_height > 0:
-                x = effective_rect.x()
-                y = y + line_height + space_y
-                next_x = x + item.sizeHint().width() + space_x
-                line_height = 0
+            nextX = x + item.sizeHint().width() + spaceX
+            if nextX - spaceX > effectiveRect.right() and lineHeight > 0:
+                x = effectiveRect.x()
+                y = y + lineHeight + spaceY
+                nextX = x + item.sizeHint().width() + spaceX
+                lineHeight = 0
 
-            if not test_only:
+            if not testOnly:
                 item.setGeometry(QRect(QPoint(x, y), item.sizeHint()))
 
-            x = next_x
-            line_height = max(line_height, item.sizeHint().height())
+            x = nextX
+            lineHeight = max(lineHeight, item.sizeHint().height())
 
-        new_height = y + line_height - rect.y()
-        self.heightChanged.emit(new_height)
-        return new_height
-
+        newHeight = y + lineHeight - rect.y()
+        self.heightChanged.emit(newHeight)
+        return newHeight
 
 
 class TagWindow(QWidget): # type: ignore
     mainWindow: MainWindow
+
     def __init__(self, mainWindow: MainWindow) -> None: # mainWindow is passed as parameter so mainWindow can update with tag changes.
         super().__init__()
         # Set Window attributes
@@ -168,7 +171,7 @@ class TagWindow(QWidget): # type: ignore
         self.setFixedSize(600,600)
 
         # ID of not that window was opened for
-        self.currentNoteId: int = None
+        self.currentNoteId: int | None = None
 
         # setting local mainWindow to parameter
         self.mainWindow = mainWindow
@@ -202,7 +205,7 @@ class TagWindow(QWidget): # type: ignore
         self.currentTagsScrollArea: QScrollArea = QScrollArea()
         self.currentTagsScrollArea.setWidgetResizable(True)
         self.currentTagsScrollArea.setStyleSheet("border: none; background-color: transparent;")
-        self.currentTagsScrollArea.setFixedHeight(200)
+        self.currentTagsScrollArea.setFixedHeight(210)
 
         # Current Tags Grid container
         self.currentTagsScrollContainer: QWidget = QWidget()
@@ -229,12 +232,10 @@ class TagWindow(QWidget): # type: ignore
         self.availableTagsScrollContainer: QWidget = QWidget()
         self.availableTagsScrollContainer.setStyleSheet("background-color: transparent;")
 
-        self.gridLayout: QGridLayout = QGridLayout()
         self.availableTagsScrollContainer.setLayout(self.availableTagsBox)
 
         # Put the container inside the scroll area for Available Tags
         self.availableTagsScrollArea.setWidget(self.availableTagsScrollContainer)
-
 
         self.addTagLayout.addWidget(self.addButton)
         self.addTagLayout.addWidget(self.addTagLabel)
@@ -248,8 +249,8 @@ class TagWindow(QWidget): # type: ignore
 
         self.setLayout(self.layout)
 
-    # Function to get name of tag to be created. When ok is clicked (done is true), the tag is created and associated with the note 
-    def getTagName(self):
+    # Function to get name of tag to be created. When ok is clicked (done is true), the tag is created and associated with the note
+    def getTagName(self) -> None:
         # get tag name and confirmation form input box
         name, done = QInputDialog.getText(self, "Tag Name Window", "Input Tag Name")
         if done:
@@ -261,29 +262,30 @@ class TagWindow(QWidget): # type: ignore
                 if type(assoicateTagResponse) is int:
                     self.showCurrentTags()
                     self.mainWindow.displayNotesOnHome()
-                else: 
+                else:
                     # error popup for failed tag association
-                    QMessageBox.critical(self, assoicateTagResponse["title"], assoicateTagResponse["msg"])
+                    QMessageBox.critical(self, assoicateTagResponse["title"], assoicateTagResponse["msg"]) # type: ignore  [index]
             else:
                 # error popup for failed tag creation
-                QMessageBox.critical(self, createTagResponse["title"], createTagResponse["msg"])
+                QMessageBox.critical(self, createTagResponse["title"], createTagResponse["msg"]) # type: ignore  [index]
 
     # fetches and displays tags associated with note
-    def showCurrentTags(self):
+    def showCurrentTags(self) -> None:
         clearLayout(self.currentTagsBox)
-        tagAssociations: list[tuple] | dict[str,str] = tagLogic.getTagAssociationsHandler(noteId=self.currentNoteId, databaseName=databaseName)
+        tagAssociations: list[int] | dict[str,str] = tagLogic.getTagAssociationsHandler(noteId=self.currentNoteId, databaseName=databaseName)
         # check that fetch tag associations succeeded
-        if type(tagAssociations) is dict[str, str]:
-             QMessageBox.critical(self, tagAssociations["title"], tagAssociations["msg"])
+        if type(tagAssociations) is dict:
+            QMessageBox.critical(self, tagAssociations["title"], tagAssociations["msg"])
+            return None
 
         # "[tag[2] for tag in tagAssociations]" is a list comprehension that return an array of tag IDs
-        associatedTags: list[tuple] | dict[str,str] = tagLogic.getSelectedTagsHandler([tag[2] for tag in tagAssociations],databaseName=databaseName)
+        associatedTags: list[tuple] | dict[str,str] = tagLogic.getSelectedTagsHandler([tag[2] for tag in tagAssociations],databaseName=databaseName) # type: ignore  [type-arg, index]
         # check that fetch selected tags succeeded
-        if type(associatedTags) is dict[str, str]:
-             QMessageBox.critical(self, associatedTags["title"], associatedTags["msg"])
+        if type(associatedTags) is dict:
+            QMessageBox.critical(self, associatedTags["title"], associatedTags["msg"])
 
         # iterate through both tags and tag-note associations to display tags associated notes
-        if type(associatedTags) is int and type(tagAssociations) is int:
+        if type(associatedTags) is not dict and type(tagAssociations) is not dict:
             for tag, assoc in zip(associatedTags, tagAssociations):
                 # create box to display individual tags
                 tagBox: QFrame = QFrame()
@@ -293,7 +295,7 @@ class TagWindow(QWidget): # type: ignore
                             border-radius: 20px;
                         }
                     """))
-                
+
                 # text for tag name
                 tagBoxLabel: QLabel = QLabel(tag[1])
                 tagBoxLabel.setStyleSheet("color: #A5F3FF")
@@ -307,7 +309,7 @@ class TagWindow(QWidget): # type: ignore
                 removeTagButton.setStyleSheet("color: #A5F3FF;" \
                 "background-color: #000000")
                 removeTagButton.setFixedSize(24,24)
-                removeTagButton.clicked.connect(lambda _, id = assoc[0]: self.removeTag(id))
+                removeTagButton.clicked.connect(lambda _, id = assoc[0]: self.removeTag(id)) # type: ignore  [index]
 
                 # adding components to tag box
                 tagBoxLayout.addWidget(tagBoxLabel)
@@ -317,19 +319,16 @@ class TagWindow(QWidget): # type: ignore
                 # adding add tagBox to current tags space
                 self.currentTagsBox.addWidget(tagBox)
 
-    def showAvailableTags(self):
+    def showAvailableTags(self) -> None:
         clearLayout(self.availableTagsBox)
-        tagAssociations: list[tuple] | dict[str,str] = tagLogic.getTagAssociationsHandler(noteId=self.currentNoteId, databaseName=databaseName)
+        tagAssociations: list[int] | dict[str,str] = tagLogic.getTagAssociationsHandler(noteId=self.currentNoteId, databaseName=databaseName)
         # check that fetch tag associations succeeded
-        if type(tagAssociations) is dict[str, str]:
-             QMessageBox.critical(self, tagAssociations["title"], tagAssociations["msg"])
+        if type(tagAssociations) is dict:
+            QMessageBox.critical(self, tagAssociations["title"], tagAssociations["msg"])
 
         # "[tag for tag in tagLogic.getTagsHandler(databaseName=databaseName) if tag[0] not in [assoc[2] for assoc in tagAssociations]]" is a list comprehension that returns all tags not associated with note
-        availableTags: list[tuple] = [tag for tag in tagLogic.getTagsHandler(databaseName=databaseName) if tag[0] not in [assoc[2] for assoc in tagAssociations]]
-        # check that fetch selected tags succeeded
-        if type(availableTags) is dict[str, str]:
-             QMessageBox.critical(self, availableTags["title"], availableTags["msg"])
-        
+        availableTags: list[tuple]  = [tag for tag in tagLogic.getTagsHandler(databaseName=databaseName) if tag[0] not in [assoc[2] for assoc in tagAssociations]] # type: ignore  [type-arg, index]
+
         # iterate through unassociated tags to diplay them
         for tag in availableTags:
             # create frame for tags
@@ -340,7 +339,7 @@ class TagWindow(QWidget): # type: ignore
                         border-radius: 20px;
                     }
                 """))
-            
+
             # text for tag name
             tagBoxLabel: QLabel = QLabel(tag[1])
             tagBoxLabel.setStyleSheet("color: #A5F3FF")
@@ -367,7 +366,7 @@ class TagWindow(QWidget): # type: ignore
         removeTagAssociationResponse: None | dict[str, str] = tagLogic.removeTagAssociationHandler(databaseName, tagAssociationId)
 
         # check removeTagAssociation was successful
-        if type(removeTagAssociationResponse) == dict[str, str]:
+        if type(removeTagAssociationResponse) == dict:
             QMessageBox.critical(self, removeTagAssociationResponse["title"], removeTagAssociationResponse["msg"])
         else:
             self.showAvailableTags()
@@ -377,20 +376,19 @@ class TagWindow(QWidget): # type: ignore
     # associates tag with note
     def associateTag(self, tagId: int, noteId: int)->None:
         associateTagResponse: None | dict[str, str] = tagLogic.associateTagWithNoteHandler(tagId, noteId, databaseName)
-        
+
          # check removeTagAssociation was successful
-        if type(associateTagResponse) == dict[str, str]:
+        if type(associateTagResponse) == dict:
             QMessageBox.critical(self, associateTagResponse["title"], associateTagResponse["msg"])
         else:
             self.showAvailableTags()
             self.showCurrentTags()
             self.mainWindow.displayNotesOnHome()
 
-    def setCurrentNoteId(self, noteId: int):
+    def setCurrentNoteId(self, noteId: int) -> None:
         self.currentNoteId = noteId
         self.showCurrentTags()
         self.showAvailableTags()
-
 
 
 class MainWindow(QWidget):  # type: ignore
@@ -406,6 +404,9 @@ class MainWindow(QWidget):  # type: ignore
 
         # Track whether user is editing an existing note or creating a new one
         self.currentNoteId: int | None = None
+
+        # Track the current sorting mode for the home screen grid
+        self.currentSortMode: str = "date"
 
         # Create Stacked Widget for holding multiple pages
         self.stackedLayout: QStackedLayout = QStackedLayout()
@@ -483,20 +484,56 @@ class MainWindow(QWidget):  # type: ignore
         self.homePage: QWidget = QWidget()
         self.homeLayout: QVBoxLayout = QVBoxLayout()
 
-        # Logo
+        # ---------------- TOP NAVIGATION BAR ----------------
+        self.topBarLayout = QHBoxLayout()
+
+        # Left: Logo & Title
+        logoTitleLayout = QHBoxLayout()
         self.logoLabel = QLabel()
         logoPixmap = QPixmap("logo_160x160.png")
-        self.logoLabel.setPixmap(logoPixmap)
-        self.logoLabel.setAlignment(Qt.AlignCenter)
+        if not logoPixmap.isNull():
+            self.logoLabel.setPixmap(logoPixmap.scaled(40, 40, Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
-        # Title
         self.homeTitleLabel = QLabel("Synapse")
-        homeTitleFont = QFont("Arial", 36, QFont.Bold)
-        self.homeTitleLabel.setFont(homeTitleFont)
-        self.homeTitleLabel.setAlignment(Qt.AlignCenter)
+        self.homeTitleLabel.setFont(QFont("Arial", 24, QFont.Bold))
 
-        self.homeLayout.addWidget(self.logoLabel)
-        self.homeLayout.addWidget(self.homeTitleLabel)
+        logoTitleLayout.addWidget(self.logoLabel)
+        logoTitleLayout.addWidget(self.homeTitleLabel)
+
+        # Right: Sort Controls
+        sortLabel = QLabel("Sort by")
+        sortLabel.setFont(QFont("Arial", 18, QFont.Bold))
+
+        self.sortContainer = QFrame()
+        self.sortContainer.setStyleSheet("background-color: rgba(130, 150, 170, 0.3); border-radius: 20px;")
+        sortLayout = QHBoxLayout(self.sortContainer)
+        sortLayout.setContentsMargins(20, 10, 20, 10)
+
+        self.btnSortName = QPushButton("Name")
+        self.btnSortTag = QPushButton("Tag")
+        self.btnSortDate = QPushButton("Date")
+
+        self.updateSortButtonStyles()
+
+        # Wire the buttons to update the state and refresh the screen
+        self.btnSortName.clicked.connect(lambda: self.changeSortOrder("name"))
+        self.btnSortTag.clicked.connect(lambda: self.changeSortOrder("tag"))
+        self.btnSortDate.clicked.connect(lambda: self.changeSortOrder("date"))
+
+        sortLayout.addWidget(self.btnSortName)
+        sortLayout.addWidget(self.btnSortTag)
+        sortLayout.addWidget(self.btnSortDate)
+
+        # Assemble the Top Bar
+        self.topBarLayout.addLayout(logoTitleLayout)
+        self.topBarLayout.addStretch()
+        self.topBarLayout.addWidget(sortLabel)
+        self.topBarLayout.addSpacing(15)
+        self.topBarLayout.addWidget(self.sortContainer)
+        self.topBarLayout.addSpacing(70)
+
+        self.homeLayout.addLayout(self.topBarLayout)
+        self.homeLayout.addSpacing(20)
 
         # Scroll Area
         self.scrollArea: QScrollArea = QScrollArea()
@@ -571,7 +608,8 @@ class MainWindow(QWidget):  # type: ignore
 
         QWidget.resizeEvent(self, event)
 
-    def closeEvent(self, event):
+    # pylint: disable=unused-argument
+    def closeEvent(self, event) -> None: # type: ignore
         self.newTagWindow.close()
 
     def createNewNote(self) -> None:
@@ -589,6 +627,44 @@ class MainWindow(QWidget):  # type: ignore
         self.stackedLayout.setCurrentIndex(Page.HOME.value)
         self.newNoteButton.raise_()
 
+    def changeSortOrder(self, mode: str) -> None:
+        """Updates the active sort mode and refreshes the grid."""
+        self.currentSortMode = mode
+        self.updateSortButtonStyles()
+        self.displayNotesOnHome()
+
+    def updateSortButtonStyles(self) -> None:
+        """Applies a white background to the active sort button."""
+        baseStyle = """
+            QPushButton { 
+                border: none; 
+                background: transparent; 
+                font-size: 18px; 
+                font-weight: bold;
+                padding: 5px 15px; 
+                color: black; 
+                border-radius: 12px;
+            } 
+            QPushButton:hover { color: #555555; }
+        """
+
+        selectedStyle = """
+            QPushButton { 
+                border: none; 
+                background: black; 
+                font-size: 18px; 
+                font-weight: bold;
+                padding: 5px 15px; 
+                color: white; 
+                border-radius: 12px;
+            } 
+        """
+
+        # Apply the selected style only to the active mode, and base style to the rest
+        self.btnSortName.setStyleSheet(selectedStyle if self.currentSortMode == "name" else baseStyle)
+        self.btnSortTag.setStyleSheet(selectedStyle if self.currentSortMode == "tag" else baseStyle)
+        self.btnSortDate.setStyleSheet(selectedStyle if self.currentSortMode == "date" else baseStyle)
+
     def displayNotesOnHome(self) -> None:
         """Fetches notes and builds custom rounded cards in a grid."""
 
@@ -603,6 +679,14 @@ class MainWindow(QWidget):  # type: ignore
             # Grid positioning coordinates
             row = 0
             col = 0
+
+            # sorts notes accordingly
+            if self.currentSortMode == "name":
+                allNotes.sort(key = lambda note: note[1].lower())
+            elif self.currentSortMode == "tag":
+                allNotes.sort(key = lambda note: self.sortByTag(self.getTags(note[0]))) # type: ignore[arg-type]
+            else:
+                allNotes.sort(key=lambda note: note[3])
 
             # Builds a card for each note
             for note in allNotes:
@@ -663,9 +747,9 @@ class MainWindow(QWidget):  # type: ignore
 
                 # show tags on cards
                 tagLayout: QHBoxLayout = QHBoxLayout()
-                tags: list[tuple] = self.getTags(noteId)
+                tags: list[tuple] | dict[str, str] | None = self.getTags(noteId) # type: ignore [type-arg]
                 widthCounter: int = 0
-                for tag in tags:
+                for tag in tags: # type: ignore [union-attr]
                     tagBox: QFrame = QFrame()
                     ellipsisBox: QFrame = QFrame()
                     oldWidthCounter: int = widthCounter
@@ -678,7 +762,7 @@ class MainWindow(QWidget):  # type: ignore
                                 border-radius: 20px;
                             }
                         """))
-                
+
                     tagBoxLabel: QLabel = QLabel(tag[1])
                     tagBoxLabel.setStyleSheet("color: #A5F3FF")
                     tagBoxLabel.setFont(QFont("Arial", 11))
@@ -714,10 +798,10 @@ class MainWindow(QWidget):  # type: ignore
                     if widthCounter > 25 and oldWidthCounter != 0:
                         tagLayout.addWidget(ellipsisBox)
                         break
-                    elif widthCounter > 25 and oldWidthCounter == 0:
-                            tagBoxLabel.setText(tag[1][:17]+"...")
-                            tagLayout.addWidget(tagBox)
-                            tagLayout.addWidget(ellipsisBox)
+                    if widthCounter > 25 and oldWidthCounter == 0:
+                        tagBoxLabel.setText(tag[1][:17]+"...")
+                        tagLayout.addWidget(tagBox)
+                        tagLayout.addWidget(ellipsisBox)
                     else:
                         tagLayout.addWidget(tagBox)
 
@@ -776,7 +860,7 @@ class MainWindow(QWidget):  # type: ignore
             self.statusLabel.setText(saveResult)
             self.currentNoteId = int("".join(filter(str.isdigit, saveResult)))
             self.displayNotesOnHome()
-    
+
     def onAnalyzeNoteClicked(self) -> None:
         """Analyze the currently open note and store the results."""
         if self.currentNoteId is None:
@@ -804,6 +888,7 @@ class MainWindow(QWidget):  # type: ignore
             databaseName
         )
 
+        print(result)
         if isinstance(result, dict):
             summary = result.get("summary", "")
             mood = result.get("mood", "")
@@ -823,9 +908,21 @@ class MainWindow(QWidget):  # type: ignore
         self.newTagWindow.setCurrentNoteId(clickedId)
         self.newTagWindow.show()
 
-    def getTags(self, noteId: int)->list[tuple]:
-        tagAssociations:list[tuple] = tagLogic.getTagAssociationsHandler(noteId, databaseName)
-        return tagLogic.getSelectedTagsHandler([assoc[2] for assoc in tagAssociations], databaseName)
+    def getTags(self, noteId: int)->list[tuple] | dict[str, str] | None: # type: ignore [type-arg]
+        tagAssociations:list[tuple] | dict[str, str] = tagLogic.getTagAssociationsHandler(noteId, databaseName) # type: ignore [type-arg]
+        if type(tagAssociations) == dict[str, str]:
+            QMessageBox.critical(self, tagAssociations["title"], tagAssociations["msg"])
+            return None
+        getSelectedTagsResponse: list[tuple] | dict[str, str] = tagLogic.getSelectedTagsHandler([assoc[2] for assoc in tagAssociations], databaseName) # type: ignore [type-arg]
+        if type(getSelectedTagsResponse) == dict[str,str]:
+            QMessageBox.critical(self, getSelectedTagsResponse["title"], getSelectedTagsResponse["msg"])
+            return None
+        return getSelectedTagsResponse
+
+    def sortByTag(self, tags: list[tuple]): # type: ignore [type-arg, no-untyped-def]
+        if tags != []:
+            return tags[0][1]
+        return chr(255)
 
 
 def runApp() -> int:

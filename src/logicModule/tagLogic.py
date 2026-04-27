@@ -5,7 +5,7 @@ from src.databaseModule import generalDbFunctions, tagDbFunctions
 
 def createTagHandler(name: str,  databaseName:str)-> int | dict[str, str]:
     dbPath = generalDbFunctions.getDbPath(databaseName)
-    
+
     if not os.path.exists(dbPath):
         return {
             "title": "Database Missing",
@@ -14,15 +14,16 @@ def createTagHandler(name: str,  databaseName:str)-> int | dict[str, str]:
     try:
         conn = generalDbFunctions.connectDb(dbPath)
         try:
-            
+
             cursor = conn.cursor()
-            tagId:int = tagDbFunctions.createTag(cursor, name) # type: ignore[type-arg]
+            tagId:int = tagDbFunctions.createTag(cursor, name)
             conn.commit()
         finally:
             conn.close()
         return tagId
     except sqlite3.Error as exc:
         return  {"title": "Database Error", "msg": f"SQLite error:\n{exc}"}
+
 
 def associateTagWithNoteHandler(tagId: int, noteId: int, databaseName:str) -> int | dict[str, str]:
     dbPath = generalDbFunctions.getDbPath(databaseName)
@@ -34,18 +35,18 @@ def associateTagWithNoteHandler(tagId: int, noteId: int, databaseName:str) -> in
     try:
         conn = generalDbFunctions.connectDb(dbPath)
         try:
-            
+
             cursor = conn.cursor()
-            associatedTagIds:int = tagDbFunctions.associateTagWithNote(cursor, tagId=tagId, noteId=noteId) # type: ignore[type-arg]
+            associatedTagIds:int = tagDbFunctions.associateTagWithNote(cursor, tagId=tagId, noteId=noteId)
             conn.commit()
         finally:
             conn.close()
-        print(associatedTagIds)
         return associatedTagIds
     except sqlite3.Error as exc:
         return  {"title": "Database Error", "msg": f"SQLite error:\n{exc}"}
-    
-def getTagAssociationsHandler(noteId: int, databaseName:str)-> list[tuple] | dict[str,str]:
+
+
+def getTagAssociationsHandler(noteId: int, databaseName:str)-> list[int] | dict[str,str]:
     dbPath = generalDbFunctions.getDbPath(databaseName)
     if not os.path.exists(dbPath):
         return {
@@ -56,16 +57,16 @@ def getTagAssociationsHandler(noteId: int, databaseName:str)-> list[tuple] | dic
         conn = generalDbFunctions.connectDb(dbPath)
         try:
             cursor = conn.cursor()
-            tagAssociation:list[int] = tagDbFunctions.getTagAssociations(cursor, noteId=noteId) # type: ignore[type-arg]
+            tagAssociation:list[int] = tagDbFunctions.getTagAssociations(cursor, noteId=noteId)
             conn.commit()
         finally:
             conn.close()
         return tagAssociation
     except sqlite3.Error as exc:
         return  {"title": "Database Error", "msg": f"SQLite error:\n{exc}"}
-    
 
-def getSelectedTagsHandler(tagIds: list[int], databaseName:str)->list[tuple] | dict[str,str]:
+
+def getSelectedTagsHandler(tagIds: list[int], databaseName:str)->list[tuple] | dict[str,str]: # type: ignore[type-arg]
     dbPath = generalDbFunctions.getDbPath(databaseName)
     if not os.path.exists(dbPath):
         return {
@@ -75,7 +76,7 @@ def getSelectedTagsHandler(tagIds: list[int], databaseName:str)->list[tuple] | d
     try:
         conn = generalDbFunctions.connectDb(dbPath)
         try:
-            
+
             cursor = conn.cursor()
             associatedTagIds:list[tuple] = tagDbFunctions.getSelectedTags(cursor, tagIds=tagIds) # type: ignore[type-arg]
             conn.commit()
@@ -84,8 +85,9 @@ def getSelectedTagsHandler(tagIds: list[int], databaseName:str)->list[tuple] | d
         return associatedTagIds
     except sqlite3.Error as exc:
         return  {"title": "Database Error", "msg": f"SQLite error:\n{exc}"}
-    
-def getTagsHandler( databaseName:str)->list[tuple]|dict[str,str]:
+
+
+def getTagsHandler( databaseName:str)->list[tuple]|dict[str,str]: # type: ignore[type-arg]
     dbPath = generalDbFunctions.getDbPath(databaseName)
     if not os.path.exists(dbPath):
         return {
@@ -95,7 +97,7 @@ def getTagsHandler( databaseName:str)->list[tuple]|dict[str,str]:
     try:
         conn = generalDbFunctions.connectDb(dbPath)
         try:
-            
+
             cursor = conn.cursor()
             associatedTagIds:list[tuple] = tagDbFunctions.getTags(cursor) # type: ignore[type-arg]
             conn.commit()
@@ -104,7 +106,8 @@ def getTagsHandler( databaseName:str)->list[tuple]|dict[str,str]:
         return associatedTagIds
     except sqlite3.Error as exc:
         return  {"title": "Database Error", "msg": f"SQLite error:\n{exc}"}
-    
+
+
 def removeTagAssociationHandler(databaseName:str, tagAssociationId: int)->None | dict[str,str]:
     dbPath = generalDbFunctions.getDbPath(databaseName)
     if not os.path.exists(dbPath):
@@ -115,9 +118,9 @@ def removeTagAssociationHandler(databaseName:str, tagAssociationId: int)->None |
     try:
         conn = generalDbFunctions.connectDb(dbPath)
         try:
-            
+
             cursor = conn.cursor()
-            tagDbFunctions.removeTagAssociation(cursor, tagAssociationId) # type: ignore[type-arg]
+            tagDbFunctions.removeTagAssociation(cursor, tagAssociationId)
             conn.commit()
         finally:
             conn.close()

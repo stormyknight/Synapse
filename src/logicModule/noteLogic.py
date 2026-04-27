@@ -11,6 +11,7 @@ import json
 import hashlib
 from src.databaseModule import generalDbFunctions, noteDbFunctions
 from src.logicModule import LLM_Helper
+from src.databaseModule import tagDbFunctions
 
 
 def makeDefaultTitle() -> str:
@@ -107,7 +108,6 @@ def getNoteHandler(databaseName:str, noteId: int)->tuple|dict[str, str]: # type:
         return  {"title": "Database Error", "msg": f"SQLite error:\n{exc}"}
 
 
-
 # Functions for analyzing note contents and sending commands to the LLM
 def analyzeNoteContent(content: str) -> dict[str, str | list[str]]:
     """
@@ -116,32 +116,32 @@ def analyzeNoteContent(content: str) -> dict[str, str | list[str]]:
     - tags
     - mood
     """
-    return LLM_Helper.analyze_note(content)
+    return LLM_Helper.analyzeNote(content) # type: ignore [no-any-return]
 
 
 def summarizeNoteContent(content: str) -> str:
     """
     Return a short summary of the note content.
     """
-    return LLM_Helper.generate_summary(content)
+    return LLM_Helper.generateSummary(content) # type: ignore [no-any-return]
 
 
 def suggestTagsForNote(content: str) -> list[str]:
     """
     Return a list of suggested tags for the note content.
     """
-    return LLM_Helper.generate_tags(content)
+    return LLM_Helper.generateTags(content) # type: ignore [no-any-return]
 
 
-def detectMoodForNote(content: str) -> str:
+def detectMoodForNote(content: str) -> str | list[str]:
     """
     Return a short mood label for the note content.
     """
-    return LLM_Helper.generate_mood(content)
+    return LLM_Helper.generateMood(content) # type: ignore [no-any-return]
 
 
 def analyzeAndStoreNote(
-    note_id: int,
+    noteId: int,
     content: str,
     databaseName: str
 ) -> dict[str, str | list[str]]:
@@ -160,128 +160,47 @@ def analyzeAndStoreNote(
             "mood": "unavailable"
         }
 
-    result = LLM_Helper.analyze_note(content)
+    result: dict[str, str | list[str]] = LLM_Helper.analyzeNote(content)
 
     summary = result.get("summary", "")
     mood = result.get("mood", "")
     tags = result.get("tags", [])
 
-    model_name = LLM_Helper.MODEL_NAME
-    prompt_version = "v1"
-    input_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
-    output_json = json.dumps(result)
+    modelName = LLM_Helper.MODEL_NAME
+    promptVersion = "v1"
+    inputHash = hashlib.sha256(content.encode("utf-8")).hexdigest()
+    outputJson = json.dumps(result)
 
     connection = generalDbFunctions.connectDb(dbPath)
     cursor = connection.cursor()
-    
-
 
     try:
 
         # Remove old analysis rows for this note
-        cursor.execute("""
-            DELETE FROM note_analyses
-            WHERE note_id = ? 
-            AND analysis_type IN ('summary', 'mood', 'full_analysis')
-            """,
-            (note_id,)
-        )
+        noteDbFunctions.deleteAnalysis(cursor, noteId)
 
         # remove old tag links for this note
-        cursor.execute(
-            """
-            DELETE FROM note_tags
-            WHERE note_id = ?
-            """,
-            (note_id,)
-        )
+        tagDbFunctions.removeAllNoteTagAssociations(cursor, noteId)
 
         if isinstance(summary, str) and summary.strip():
-            cursor.execute(
-                """
-                INSERT INTO note_analyses
-                (note_id, analysis_type, model_name, prompt_version, output_text, output_json, input_hash)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    note_id,
-                    "summary",
-                    model_name,
-                    prompt_version,
-                    summary,
-                    output_json,
-                    input_hash
-                )
-            )
+            noteDbFunctions.addAnalysis(cursor, noteId, "summary", modelName, promptVersion, summary, outputJson, inputHash)
 
         if isinstance(mood, str) and mood.strip():
-            cursor.execute(
-                """
-                INSERT INTO note_analyses
-                (note_id, analysis_type, model_name, prompt_version, output_text, output_json, input_hash)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    note_id,
-                    "mood",
-                    model_name,
-                    prompt_version,
-                    mood,
-                    output_json,
-                    input_hash
-                )
-            )
+            noteDbFunctions.addAnalysis(cursor, noteId, "mood", modelName, promptVersion, mood, outputJson, inputHash)
 
-        cursor.execute(
-            """
-            INSERT INTO note_analyses
-            (note_id, analysis_type, model_name, prompt_version, output_text, output_json, input_hash)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                note_id,
-                "full_analysis",
-                model_name,
-                prompt_version,
-                summary if isinstance(summary, str) else "",
-                output_json,
-                input_hash
-            )
-        )
+        noteDbFunctions.addAnalysis(cursor,noteId,
+                "full_analysis", modelName, promptVersion,  summary if isinstance(summary, str) else "", outputJson, inputHash)
 
         if isinstance(tags, list):
             for tag in tags:
-                clean_tag = str(tag).strip().lower()
-                if not clean_tag:
+                cleanTag: str = str(tag).strip().lower()
+                if not cleanTag:
                     continue
 
-                cursor.execute(
-                    """
-                    INSERT OR IGNORE INTO tags (tag_name)
-                    VALUES (?)
-                    """,
-                    (clean_tag,)
-                )
+                tagId = tagDbFunctions.createTag(cursor, cleanTag)
 
-                cursor.execute(
-                    """
-                    SELECT id FROM tags
-                    WHERE tag_name = ?
-                    """,
-                    (clean_tag,)
-                )
-                tag_row = cursor.fetchone()
-
-                if tag_row is not None:
-                    tag_id = tag_row[0]
-
-                    cursor.execute(
-                        """
-                        INSERT OR IGNORE INTO note_tags (note_id, tag_id)
-                        VALUES (?, ?)
-                        """,
-                        (note_id, tag_id)
-                    )
+                if tagId is not None:
+                    tagDbFunctions.associateTagWithNote(cursor, tagId, noteId)
 
         connection.commit()
         return result

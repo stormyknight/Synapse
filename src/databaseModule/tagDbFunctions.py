@@ -1,17 +1,19 @@
 import math
 import sqlite3
 
-def createTag(cursor: sqlite3.Cursor, name: str):
+
+def createTag(cursor: sqlite3.Cursor, name: str) -> int | None:
     cursor.execute(
         """
-        INSERT INTO tags (tag_name)
+        INSERT OR IGNORE INTO tags (tag_name)
         VALUES (?)
         """,
         (name,),
     )
-    return cursor.lastrowid if cursor.lastrowid is not None else int(math.nan)
+    return cursor.lastrowid if cursor.lastrowid is not None else None
 
-def associateTagWithNote(cursor: sqlite3.Cursor, tagId: int,  noteId: int):
+
+def associateTagWithNote(cursor: sqlite3.Cursor, tagId: int,  noteId: int) -> int:
     cursor.execute(
         """
         INSERT INTO note_tags (note_id, tag_id)
@@ -21,28 +23,37 @@ def associateTagWithNote(cursor: sqlite3.Cursor, tagId: int,  noteId: int):
     )
     return cursor.lastrowid if cursor.lastrowid is not None else int(math.nan)
 
+
 def getTagAssociations(cursor: sqlite3.Cursor, noteId: int)->list[int]|None:
     cursor.execute(
-        f"""
+        """
         SELECT * FROM note_tags WHERE note_id = ?
         """,
         (noteId,)
     )
     return  cursor.fetchall()
 
+
 def getSelectedTags(cursor: sqlite3.Cursor, tagIds: list[int])->list[int]|None:
     placeHolders = ",".join("?" for _ in tagIds)
     cursor.execute(
         f"""
         SELECT * FROM tags WHERE id IN ({placeHolders})
+        ORDER BY tag_name
         """,
         (tagIds)
     )
     return cursor.fetchall()
 
-def getTags(cursor: sqlite3.Cursor)->list[tuple]:
-    cursor.execute("SELECT * FROM tags")
+
+def getTags(cursor: sqlite3.Cursor)->list[tuple]: # type: ignore [type-arg]
+    cursor.execute("SELECT * FROM tags ORDER BY tag_name")
     return cursor.fetchall()
+
 
 def removeTagAssociation(cursor: sqlite3.Cursor, tagAssociationId: int)->None:
     cursor.execute("DELETE FROM note_tags WHERE id = ?", (tagAssociationId,))
+
+
+def removeAllNoteTagAssociations(cursor: sqlite3.Cursor, noteId: int)-> None:
+    cursor.execute("DELETE FROM note_tags WHERE note_id = ?", (noteId,))
