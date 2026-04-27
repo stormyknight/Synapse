@@ -1,27 +1,28 @@
 # Synapse
 # logicModule
 # llm_helper.py
+# pylint: disable=invalid-name
 
-from ollama import chat
+from ollama import chat, ChatResponse
 from pydantic import BaseModel, ValidationError
 
-
+# pylint: disable=invalid-name
 MODEL_NAME = "alibayram/smollm3"
 
 
-class NoteAnalysis(BaseModel):
+class NoteAnalysis(BaseModel): # type: ignore
     summary: str
     tags: list[str]
     mood: str
 
 
-def is_llm_available() -> bool:
+def isLlmAvailable() -> bool:
     """
     Quick check to see whether the local Ollama model/server is reachable.
     Returns True if the model responds, otherwise False.
     """
     try:
-        response = chat(
+        response: ChatResponse = chat(
             model=MODEL_NAME,
             messages=[
                 {
@@ -31,14 +32,13 @@ def is_llm_available() -> bool:
             ],
             options={"temperature": 0}
         )
-
         content = response.message.content.strip().lower()
         return "ready" in content
     except Exception:
         return False
 
 
-def analyze_note(note_text: str) -> dict[str, str | list[str]]:
+def analyzeNote(noteText: str) -> dict[str, str | list[str]]:
     """
     Analyze a note and return structured results.
 
@@ -47,7 +47,7 @@ def analyze_note(note_text: str) -> dict[str, str | list[str]]:
     - tags
     - mood
     """
-    if not note_text or not note_text.strip():
+    if not noteText or not noteText.strip():
         return {
             "summary": "",
             "tags": [],
@@ -73,7 +73,7 @@ Keep the tags short, lowercase if possible.
 Keep the mood to a short phrase.
 
 Note:
-{note_text}
+{noteText}
 """
                 }
             ],
@@ -103,28 +103,29 @@ Note:
         }
 
 
-def generate_summary(note_text: str) -> str:
+def generateSummary(noteText: str) -> str:
     """
     Return only the summary portion of the analysis.
     """
-    result = analyze_note(note_text)
+    result = analyzeNote(noteText)
     summary = result.get("summary", "")
     return summary if isinstance(summary, str) else ""
 
 
-def generate_tags(note_text: str) -> list[str]:
+def generateTags(noteText: str) -> list[str]:
     """
     Return only the tags portion of the analysis.
     """
-    result = analyze_note(note_text)
+    result = analyzeNote(noteText)
     tags = result.get("tags", [])
     return tags if isinstance(tags, list) else []
 
 
-def generate_mood(note_text: str) -> str:
+# pylint: disable=invalid-name
+def generateMood(noteText: str) -> str | list[str]:
     """
     Return only the mood portion of the analysis.
     """
-    result = analyze_note(note_text)
-    mood = result.get("mood", "")
+    result: dict[str, str | list[str]] = analyzeNote(noteText)
+    mood: str | list[str] = result.get("mood", "")
     return mood if isinstance(mood, str) else ""
