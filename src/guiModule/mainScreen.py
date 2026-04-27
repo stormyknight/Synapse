@@ -732,6 +732,9 @@ class MainWindow(QWidget):  # type: ignore
                 previewLabel.setWordWrap(True)
                 previewLabel.setStyleSheet("color: #333333; background-color: transparent;")
 
+                titleLabel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+                previewLabel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+
                 # Add overflow menu
                 noteMenu: QMenu = QMenu(self)
                 addRemoveTag: QAction = QAction("Add/Remove Tag", self)

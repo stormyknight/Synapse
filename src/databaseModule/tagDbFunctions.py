@@ -10,13 +10,21 @@ def createTag(cursor: sqlite3.Cursor, name: str) -> int | None:
         """,
         (name,),
     )
-    return cursor.lastrowid if cursor.lastrowid is not None else None
+    cursor.execute(
+            """
+            SELECT id FROM tags WHERE tag_name = ?
+            """,
+            (name,),
+    )
+    row = cursor.fetchone()
+    return row[0] if row else None
 
 
 def associateTagWithNote(cursor: sqlite3.Cursor, tagId: int,  noteId: int) -> int:
+    print(noteId)
     cursor.execute(
         """
-        INSERT INTO note_tags (note_id, tag_id)
+        INSERT OR IGNORE INTO note_tags (note_id, tag_id)
         VALUES (?, ?)
         """,
         (noteId,tagId,),
@@ -56,4 +64,10 @@ def removeTagAssociation(cursor: sqlite3.Cursor, tagAssociationId: int)->None:
 
 
 def removeAllNoteTagAssociations(cursor: sqlite3.Cursor, noteId: int)-> None:
-    cursor.execute("DELETE FROM note_tags WHERE note_id = ?", (noteId,))
+    cursor.execute(
+            """
+            DELETE FROM note_tags
+            WHERE note_id = ?
+            """,
+            (noteId,)
+        )
