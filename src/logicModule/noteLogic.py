@@ -139,6 +139,20 @@ def detectMoodForNote(content: str) -> str | list[str]:
     """
     return LLM_Helper.generateMood(content) # type: ignore [no-any-return]
 
+def deleteNoteHandler(noteId: int, databaseName: str):
+    dbPath = generalDbFunctions.getDbPath(databaseName)
+
+    try:
+        conn = generalDbFunctions.connectDb(dbPath)
+        try:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM notes WHERE id = ?", (noteId,))
+            conn.commit()
+        finally:
+            conn.close()
+        return None
+    except sqlite3.Error as exc:
+        return {"title": "Database Error", "msg": str(exc)}
 
 def analyzeAndStoreNote(
     noteId: int,

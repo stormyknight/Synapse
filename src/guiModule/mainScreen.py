@@ -412,7 +412,6 @@ class TagWindow(QWidget): # type: ignore
         self.showCurrentTags()
         self.showAvailableTags()
 
-    
 
 class MainWindow(QWidget):  # type: ignore
     def __init__(self) -> None:
@@ -908,6 +907,19 @@ class MainWindow(QWidget):  # type: ignore
                 overflowMenuButton.setIcon(QIcon("more-dots-v.png"))
                 overflowMenuButton.clicked.connect(lambda _, b=overflowMenuButton, m=noteMenu:  self.showMenu(m, b))
                 overflowMenuButton.setFixedSize(24,24)
+                deleteButton: QPushButton = QPushButton()
+                deleteButton.setIcon(QIcon("deleteIcon.png"))  # use an X icon or trash icon
+                deleteButton.setFixedSize(24, 24)
+                deleteButton.setStyleSheet("""
+                    QPushButton {
+                        background-color: transparent;
+                    }
+                    QPushButton:hover {
+                        background-color: rgba(255, 0, 0, 0.2);
+                        border-radius: 12px;
+                    }
+                """)
+                deleteButton.clicked.connect(lambda _, id=noteId: self.deleteNote(id))
 
                 # show tags on cards
                 tagLayout: QHBoxLayout = QHBoxLayout()
@@ -970,7 +982,12 @@ class MainWindow(QWidget):  # type: ignore
                         tagLayout.addWidget(tagBox)
 
                 # Put text in the card, and put the card in the grid
-                cardLayout.addWidget(overflowMenuButton, alignment=Qt.AlignRight)
+                topRightLayout = QHBoxLayout()
+                topRightLayout.addStretch()
+                topRightLayout.addWidget(deleteButton)
+                topRightLayout.addWidget(overflowMenuButton)
+
+                cardLayout.addLayout(topRightLayout)
                 cardLayout.addWidget(titleLabel)
                 cardLayout.addWidget(previewLabel)
                 cardLayout.addStretch(1)
@@ -990,6 +1007,22 @@ class MainWindow(QWidget):  # type: ignore
     def showMenu(self, menu:QMenu, button: QPushButton)->None:
         pos = button.mapToGlobal(QPoint(button.width(), 0))
         menu.popup(pos)
+
+    def deleteNote(self, noteId: int) -> None:
+        confirm = QMessageBox.question(
+            self,
+            "Delete Note",
+            "Are you sure you want to delete this note?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+
+        if confirm == QMessageBox.Yes:
+            result = noteLogic.deleteNoteHandler(noteId, databaseName)
+
+            if isinstance(result, dict):
+                QMessageBox.critical(self, result["title"], result["msg"])
+            else:
+                self.displayNotesOnHome()     
 
     def openNoteFromCard(self, clickedId: int) -> None:
         """Gets the clicked note's content and switches to the editing page."""
