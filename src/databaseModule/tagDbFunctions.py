@@ -20,16 +20,26 @@ def createTag(cursor: sqlite3.Cursor, name: str) -> int | None:
     return row[0] if row else None
 
 
-def associateTagWithNote(cursor: sqlite3.Cursor, tagId: int,  noteId: int) -> int:
-    print(noteId)
+def associateTagWithNote(cursor: sqlite3.Cursor, tagId: int, noteId: int) -> int:
     cursor.execute(
         """
         INSERT OR IGNORE INTO note_tags (note_id, tag_id)
         VALUES (?, ?)
         """,
-        (noteId,tagId,),
+        (noteId, tagId),
     )
-    return cursor.lastrowid if cursor.lastrowid is not None else int(math.nan)
+
+    cursor.execute(
+        """
+        SELECT tag_id
+        FROM note_tags
+        WHERE note_id = ? AND tag_id = ?
+        """,
+        (noteId, tagId),
+    )
+
+    row = cursor.fetchone()
+    return row[0] if row else 0
 
 
 def getTagAssociations(cursor: sqlite3.Cursor, noteId: int)->list[int]|None:
@@ -59,8 +69,14 @@ def getTags(cursor: sqlite3.Cursor)->list[tuple]: # type: ignore [type-arg]
     return cursor.fetchall()
 
 
-def removeTagAssociation(cursor: sqlite3.Cursor, tagAssociationId: int)->None:
-    cursor.execute("DELETE FROM note_tags WHERE id = ?", (tagAssociationId,))
+def removeTagAssociation(cursor: sqlite3.Cursor, noteId: int, tagId: int) -> None:
+    cursor.execute(
+        """
+        DELETE FROM note_tags
+        WHERE note_id = ? AND tag_id = ?
+        """,
+        (noteId, tagId),
+    )
 
 
 def removeAllNoteTagAssociations(cursor: sqlite3.Cursor, noteId: int)-> None:
