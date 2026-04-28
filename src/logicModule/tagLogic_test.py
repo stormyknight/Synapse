@@ -22,8 +22,9 @@ def test_fail_databaseError_createTagHandler(mock_path) -> None: # type: ignore 
 @patch("src.logicModule.tagLogic.os.path")
 @patch("src.logicModule.tagLogic.sqlite3.Connection")
 @patch("src.logicModule.tagLogic.generalDbFunctions")
+@patch("src.logicModule.tagLogic.tagDbFunctions")
 # pylint: disable=invalid-name
-def test_success_createTagHandler(mock_dbFunctions, mock_connection, mock_path) -> None: # type: ignore [no-untyped-def]
+def test_success_createTagHandler(mock_tagDbFunctions, mock_dbFunctions, mock_connection, mock_path) -> None: # type: ignore [no-untyped-def]
       # mock exists return
     mock_path.exists = MagicMock()
     mock_path.exists.return_value = True
@@ -37,6 +38,9 @@ def test_success_createTagHandler(mock_dbFunctions, mock_connection, mock_path) 
     # mock connectDb
     mock_dbFunctions.connectDb = MagicMock()
     mock_dbFunctions.connectDb.return_value = mock_connection
+
+    # mock createTag
+    mock_tagDbFunctions.createTag.return_value = 1
 
     assert type(tagLogic.createTagHandler("tag", ":memory:")) == int # pylint: disable=unidiomatic-typecheck
 

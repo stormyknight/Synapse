@@ -59,3 +59,9 @@ def test_addAnalysis() -> None:
     dummyCursor.execute = MagicMock()
     noteDbFunctions.addAnalysis(dummyCursor, 1, "summary", "mName", "V2", "output", "Json", "hash")
     dummyCursor.execute.assert_called()
+
+# pylint: disable=invalid-name
+def test_deleteNote() -> None:
+    dummyCursor = MagicMock(spec=sqlite3.Cursor)
+    dummyCursor.execute = MagicMock()
+    noteDbFunctions.deleteNote(dummyCursor, 1)

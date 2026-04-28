@@ -214,3 +214,23 @@ def analyzeAndStoreNote(
 
     finally:
         connection.close()
+
+def deleteNoteHandler(noteId: int, databaseName: str) -> None | dict[str, str]:
+    dbPath = generalDbFunctions.getDbPath(databaseName)
+
+    if not os.path.exists(dbPath):
+        return {
+            "title": "Database Missing",
+            "msg": f"Database '{databaseName}' not found.\nRun setup_database.py first."
+        }
+    try:
+        conn = generalDbFunctions.connectDb(dbPath)
+        try:
+
+            cursor = conn.cursor()
+            noteDbFunctions.deleteNote(cursor, noteId)
+            conn.commit()
+        finally:
+            conn.close()
+    except sqlite3.Error as exc:
+        return  {"title": "Database Error", "msg": f"SQLite error:\n{exc}"}
