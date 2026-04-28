@@ -44,7 +44,7 @@ def test_getTags() -> None:
 def test_removeTagAssociation() -> None:
     dummyCursor = MagicMock(spec=sqlite3.Cursor)
     dummyCursor.execute = MagicMock()
-    tagDbFunctions.removeTagAssociation(dummyCursor, 1)
+    tagDbFunctions.removeTagAssociation(dummyCursor, 1, 1)
     dummyCursor.execute.assert_called()
 
 

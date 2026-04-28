@@ -63,8 +63,9 @@ def test_fail_databaseError_associateTagWithNoteHandler(mock_path) -> None: # ty
 @patch("src.logicModule.tagLogic.os.path")
 @patch("src.logicModule.tagLogic.sqlite3.Connection")
 @patch("src.logicModule.tagLogic.generalDbFunctions")
+@patch("src.logicModule.tagLogic.tagDbFunctions")
 # pylint: disable=invalid-name
-def test_success_associateTagWithNoteHandler(mock_dbFunctions, mock_connection, mock_path) -> None: # type: ignore [no-untyped-def]
+def test_success_associateTagWithNoteHandler(mock_tagDbFunctions, mock_dbFunctions, mock_connection, mock_path) -> None: # type: ignore [no-untyped-def]
       # mock exists return
     mock_path.exists = MagicMock()
     mock_path.exists.return_value = True
@@ -78,6 +79,9 @@ def test_success_associateTagWithNoteHandler(mock_dbFunctions, mock_connection, 
     # mock connectDb
     mock_dbFunctions.connectDb = MagicMock()
     mock_dbFunctions.connectDb.return_value = mock_connection
+
+    # mock associateTagWithNote
+    mock_tagDbFunctions.associateTagWithNote.return_value = 1
 
     assert type(tagLogic.associateTagWithNoteHandler(1, 1, ":memory:")) == int # pylint: disable=unidiomatic-typecheck
 
@@ -209,7 +213,7 @@ def test_success_getTagsHandler(mock_tagDbFunctions, mock_dbFunctions, mock_conn
 
 # pylint: disable=invalid-name
 def test_fail_noPath_removeTagAssociationHandler() -> None:
-    assert tagLogic.removeTagAssociationHandler(":memory:", 1) == { "title": "Database Missing", "msg": "Database ':memory:' not found.\nRun setup_database.py first." }
+    assert tagLogic.removeTagAssociationHandler(":memory:", 1, 1) == { "title": "Database Missing", "msg": "Database ':memory:' not found.\nRun setup_database.py first." }
 
 
 # pylint: disable=invalid-name
@@ -219,7 +223,7 @@ def test_fail_databaseError_removeTagAssociationHandler(mock_path) -> None: # ty
     mock_path.exists = MagicMock()
     mock_path.exists.return_value = True
 
-    assert tagLogic.removeTagAssociationHandler(":memory:", 1) == {"title": "Database Error", "msg": "SQLite error:\nunable to open database file"}
+    assert tagLogic.removeTagAssociationHandler(":memory:", 1, 1) == {"title": "Database Error", "msg": "SQLite error:\nunable to open database file"}
 
 
 @patch("src.logicModule.tagLogic.os.path")
@@ -241,4 +245,4 @@ def test_success_removeTagAssociationHandler(mock_dbFunctions, mock_connection, 
     mock_dbFunctions.connectDb = MagicMock()
     mock_dbFunctions.connectDb.return_value = mock_connection
 
-    assert tagLogic.removeTagAssociationHandler(":memory:", 1) is None # pylint: disable=unidiomatic-typecheck
+    assert tagLogic.removeTagAssociationHandler(":memory:", 1, 1) is None # pylint: disable=unidiomatic-typecheck

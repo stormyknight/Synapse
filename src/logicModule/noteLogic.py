@@ -215,6 +215,7 @@ def analyzeAndStoreNote(
     finally:
         connection.close()
 
+
 def deleteNoteHandler(noteId: int, databaseName: str) -> None | dict[str, str]:
     dbPath = generalDbFunctions.getDbPath(databaseName)
 
@@ -231,6 +232,7 @@ def deleteNoteHandler(noteId: int, databaseName: str) -> None | dict[str, str]:
             cursor = conn.cursor()
             noteDbFunctions.deleteNote(cursor, noteId)
             conn.commit()
+            return None
         finally:
             conn.close()
     except sqlite3.Error as exc:

@@ -79,5 +79,6 @@ def addAnalysis(cursor: sqlite3.Cursor, noteId: int, analysisType: str, modelNam
                 )
             )
 
+
 def deleteNote(cursor: sqlite3.Cursor, noteId: int) -> None:
     cursor.execute("DELETE FROM notes WHERE id =?",(noteId,))

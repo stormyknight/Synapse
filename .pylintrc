@@ -27,4 +27,6 @@ disable =
     too-many-positional-arguments,
     too-many-arguments,
     inconsistent-return-statements,
-    consider-using-from-import
+    consider-using-from-import,
+    too-many-branches,
+    too-many-lines

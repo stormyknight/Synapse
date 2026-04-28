@@ -398,8 +398,8 @@ class MainWindow(QWidget):  # type: ignore
         self.mainPageColumnMax:int = 3
 
         self.setWindowTitle("Synapse")
-        self.resize(1200, 1000)
-        self.setMinimumSize(500,400)
+        self.resize(1325, 1000)
+        self.setMinimumSize(1325,400)
         self.setStyleSheet("background-color: #A5F3FF;")
 
         # Track whether user is editing an existing note or creating a new one
@@ -407,6 +407,9 @@ class MainWindow(QWidget):  # type: ignore
 
         # Track the current sorting mode for the home screen grid
         self.currentSortMode: str = "date"
+
+        # Track the current search mode for the home screen
+        self.currentSearchMode: str = "name"
 
         # Create Stacked Widget for holding multiple pages
         self.stackedLayout: QStackedLayout = QStackedLayout()
@@ -494,11 +497,67 @@ class MainWindow(QWidget):  # type: ignore
         if not logoPixmap.isNull():
             self.logoLabel.setPixmap(logoPixmap.scaled(40, 40, Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
+        titleTextLayout = QVBoxLayout()
+
         self.homeTitleLabel = QLabel("Synapse")
         self.homeTitleLabel.setFont(QFont("Arial", 24, QFont.Bold))
 
+        self.catchphraseLabel = QLabel("Smart tag your notes")
+        self.catchphraseLabel.setFont(QFont("Arial", 11))
+        self.catchphraseLabel.setStyleSheet("color: #333333;")
+
+        titleTextLayout.addWidget(self.homeTitleLabel)
+        titleTextLayout.addWidget(self.catchphraseLabel)
+
         logoTitleLayout.addWidget(self.logoLabel)
-        logoTitleLayout.addWidget(self.homeTitleLabel)
+        logoTitleLayout.addLayout(titleTextLayout)
+
+        # ---------------- SEARCH BAR ----------------
+        self.searchInput = QLineEdit()
+        self.searchInput.setPlaceholderText("Search notes...")
+        self.searchInput.setFixedWidth(300)
+        self.searchInput.setFixedHeight(42)
+        self.searchInput.setStyleSheet("""
+            QLineEdit {
+                background-color: black;
+                color: #A5F3FF;
+                border-radius: 16px;
+                padding: 8px 16px;
+                font-size: 15px;
+                font-weight: bold;
+            }
+        """)
+        self.searchInput.textChanged.connect(self.displayNotesOnHome)
+
+        self.searchModeButton = QPushButton("Name ⌄")
+        self.searchModeButton.setFixedHeight(42)
+        self.searchModeButton.setStyleSheet("""
+            QPushButton {
+                background-color: black;
+                color: #A5F3FF;
+                border-radius: 14px;
+                padding: 6px 14px;
+                font-size: 14px;
+                font-weight: bold;
+                border: none;
+            }
+        """)
+        self.searchModeButton.clicked.connect(self.toggleSearchMode)
+
+        self.refreshHomeButton = QPushButton("Refresh")
+        self.refreshHomeButton.setFixedHeight(42)
+        self.refreshHomeButton.setStyleSheet("""
+            QPushButton {
+                background-color: black;
+                color: #A5F3FF;
+                border-radius: 14px;
+                padding: 6px 14px;
+                font-size: 14px;
+                font-weight: bold;
+                border: none;
+            }
+        """)
+        self.refreshHomeButton.clicked.connect(self.displayNotesOnHome)
 
         # Right: Sort Controls
         sortLabel = QLabel("Sort by")
@@ -527,6 +586,14 @@ class MainWindow(QWidget):  # type: ignore
         # Assemble the Top Bar
         self.topBarLayout.addLayout(logoTitleLayout)
         self.topBarLayout.addStretch()
+
+        self.topBarLayout.addWidget(self.searchInput)
+        self.topBarLayout.addSpacing(10)
+        self.topBarLayout.addWidget(self.searchModeButton)
+        self.topBarLayout.addSpacing(15)
+        self.topBarLayout.addWidget(self.refreshHomeButton)
+        self.topBarLayout.addSpacing(20)
+
         self.topBarLayout.addWidget(sortLabel)
         self.topBarLayout.addSpacing(15)
         self.topBarLayout.addWidget(self.sortContainer)
@@ -679,6 +746,20 @@ class MainWindow(QWidget):  # type: ignore
             # Grid positioning coordinates
             row = 0
             col = 0
+
+            searchText = self.searchInput.text().strip().lower()
+
+            if searchText:
+                if self.currentSearchMode == "tag":
+                    allNotes = [
+                        note for note in allNotes
+                        if any(searchText in tag[1].lower() for tag in (self.getTags(note[0]) or []))
+                    ]
+                else:
+                    allNotes = [
+                        note for note in allNotes
+                        if searchText in note[1].lower() or searchText in note[2].lower()
+                    ]
 
             # sorts notes accordingly
             if self.currentSortMode == "name":
@@ -906,7 +987,6 @@ class MainWindow(QWidget):  # type: ignore
             self.statusLabel.setText("Analysis saved")
 
             # refresh tags after LLM/AI analysis
-            self.displayTagsOnNotePage()
             self.displayNotesOnHome()
             self.newNoteButton.raise_()
 
@@ -937,7 +1017,7 @@ class MainWindow(QWidget):  # type: ignore
         if tags != []:
             return tags[0][1]
         return chr(255)
-    
+
     def deleteNoteFunction(self, noteId: int) -> None:
         reply = QMessageBox.question(self, "Delete Note", "Are you sure you want to delete this note",  QMessageBox.Yes | QMessageBox.No)
         if reply == QMessageBox.Yes:
@@ -945,6 +1025,17 @@ class MainWindow(QWidget):  # type: ignore
             if result is not None:
                 QMessageBox.critical(self, result["title"], result["msg"])
             self.displayNotesOnHome()
+
+    def toggleSearchMode(self) -> None:
+        """Toggle search mode between note title/content and tag."""
+        if self.currentSearchMode == "name":
+            self.currentSearchMode = "tag"
+            self.searchModeButton.setText("Tag ⌄")
+        else:
+            self.currentSearchMode = "name"
+            self.searchModeButton.setText("Name ⌄")
+
+        self.displayNotesOnHome()
 
 
 def runApp() -> int:

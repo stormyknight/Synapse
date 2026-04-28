@@ -292,12 +292,13 @@ def test_fail_noTags_analyzeAndStoreNote(mock_LLM_Helper, mock_dbFunctions, mock
 
     assert noteLogic.analyzeAndStoreNote(1, "content", ":memory:") == {"summary": "", "mood": "", "tags": [""]}
 
+
 # pylint: disable=invalid-name
 @patch("src.logicModule.noteLogic.os.path")
 @patch("src.logicModule.noteLogic.sqlite3.Connection")
 @patch("src.logicModule.noteLogic.generalDbFunctions")
 @patch("src.logicModule.noteLogic.noteDbFunctions")
-def test_success_deleteNoteHandler(mock_noteDbFunctions, mock_dbFunctions, mock_connection, mock_path) -> None:
+def test_success_deleteNoteHandler(mock_noteDbFunctions, mock_dbFunctions, mock_connection, mock_path) -> None: # type: ignore[no-untyped-def]
     # mock exists return
     mock_path.exists = MagicMock()
     mock_path.exists.return_value = True
