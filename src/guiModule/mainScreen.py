@@ -49,7 +49,6 @@ def clearLayout( layout: QLayout)->None:
 class Page(Enum):
     HOME = 0
     NOTE = 1
-    SETTINGS = 2 
 
 
 # a custom layout I found online that will expand horizontally and vertically to fit content and container
@@ -280,16 +279,14 @@ class TagWindow(QWidget): # type: ignore
             return None
 
         # "[tag[2] for tag in tagAssociations]" is a list comprehension that return an array of tag IDs
-        associatedTags: list[tuple] | dict[str,str] = tagLogic.getSelectedTagsHandler([assoc[1] for assoc in tagAssociations],databaseName=databaseName) # type: ignore  [type-arg, index]
+        associatedTags: list[tuple] | dict[str,str] = tagLogic.getSelectedTagsHandler([tag[2] for tag in tagAssociations],databaseName=databaseName) # type: ignore  [type-arg, index]
         # check that fetch selected tags succeeded
         if type(associatedTags) is dict:
             QMessageBox.critical(self, associatedTags["title"], associatedTags["msg"])
 
         # iterate through both tags and tag-note associations to display tags associated notes
         if type(associatedTags) is not dict and type(tagAssociations) is not dict:
-            for tag in associatedTags:
-                noteId = self.currentNoteId
-                tagId = tag[0]
+            for tag, assoc in zip(associatedTags, tagAssociations):
                 # create box to display individual tags
                 tagBox: QFrame = QFrame()
                 tagBox.setStyleSheet(("""
@@ -312,7 +309,7 @@ class TagWindow(QWidget): # type: ignore
                 removeTagButton.setStyleSheet("color: #A5F3FF;" \
                 "background-color: #000000")
                 removeTagButton.setFixedSize(24,24)
-                removeTagButton.clicked.connect(lambda _, nid=noteId, tid=tagId: self.removeTag(nid, tid))
+                removeTagButton.clicked.connect(lambda _, id = assoc[0]: self.removeTag(id)) # type: ignore  [index]
 
                 # adding components to tag box
                 tagBoxLayout.addWidget(tagBoxLabel)
@@ -330,7 +327,7 @@ class TagWindow(QWidget): # type: ignore
             QMessageBox.critical(self, tagAssociations["title"], tagAssociations["msg"])
 
         # "[tag for tag in tagLogic.getTagsHandler(databaseName=databaseName) if tag[0] not in [assoc[2] for assoc in tagAssociations]]" is a list comprehension that returns all tags not associated with note
-        availableTags: list[tuple]  = [tag for tag in tagLogic.getTagsHandler(databaseName=databaseName) if tag[0] not in [assoc[1] for assoc in tagAssociations]] # type: ignore  [type-arg, index]
+        availableTags: list[tuple]  = [tag for tag in tagLogic.getTagsHandler(databaseName=databaseName) if tag[0] not in [assoc[2] for assoc in tagAssociations]] # type: ignore  [type-arg, index]
 
         # iterate through unassociated tags to diplay them
         for tag in availableTags:
@@ -355,7 +352,7 @@ class TagWindow(QWidget): # type: ignore
             addTagButton.setStyleSheet("color: #A5F3FF;" \
             "background-color: #000000")
             addTagButton.setFixedSize(24,24)
-            addTagButton.clicked.connect(lambda checked=False, tid=tag[0]: self.associateTag(tid, self.currentNoteId))
+            addTagButton.clicked.connect(lambda _, tid=tag[0], nid=self.currentNoteId: self.associateTag(tid,nid))
 
             # adding components to frame
             tagBoxLayout.addWidget(tagBoxLabel)
@@ -365,12 +362,8 @@ class TagWindow(QWidget): # type: ignore
             self.availableTagsBox.addWidget(tagBox)
 
     # de-associates tag from note
-    def removeTag(self, noteId: int, tagId: int) -> None:
-        removeTagAssociationResponse = tagLogic.removeTagAssociationHandler(
-            databaseName,
-            noteId,
-            tagId
-        )
+    def removeTag(self, tagAssociationId: int)->None:
+        removeTagAssociationResponse: None | dict[str, str] = tagLogic.removeTagAssociationHandler(databaseName, tagAssociationId)
 
         # check removeTagAssociation was successful
         if type(removeTagAssociationResponse) == dict:
@@ -381,27 +374,12 @@ class TagWindow(QWidget): # type: ignore
             self.mainWindow.displayNotesOnHome()
 
     # associates tag with note
-    def associateTag(self, tagId: int, noteId: int | None) -> None:
-        if noteId is None:
-            QMessageBox.warning(self, "Tag Error", "No note was selected.")
-            return
+    def associateTag(self, tagId: int, noteId: int)->None:
+        associateTagResponse: None | dict[str, str] = tagLogic.associateTagWithNoteHandler(tagId, noteId, databaseName)
 
-        print(f"Associating tagId={tagId} with noteId={noteId}")
-
-        associateTagResponse = tagLogic.associateTagWithNoteHandler(
-            tagId,
-            noteId,
-            databaseName
-        )
-
-        print(f"Associate response: {associateTagResponse}")
-
-        if isinstance(associateTagResponse, dict):
-            QMessageBox.critical(
-                self,
-                associateTagResponse["title"],
-                associateTagResponse["msg"]
-            )
+         # check removeTagAssociation was successful
+        if type(associateTagResponse) == dict:
+            QMessageBox.critical(self, associateTagResponse["title"], associateTagResponse["msg"])
         else:
             self.showAvailableTags()
             self.showCurrentTags()
@@ -412,7 +390,6 @@ class TagWindow(QWidget): # type: ignore
         self.showCurrentTags()
         self.showAvailableTags()
 
-    
 
 class MainWindow(QWidget):  # type: ignore
     def __init__(self) -> None:
@@ -430,9 +407,6 @@ class MainWindow(QWidget):  # type: ignore
 
         # Track the current sorting mode for the home screen grid
         self.currentSortMode: str = "date"
-
-        # Track the current search mode for the home screen
-        self.currentSearchMode: str = "name"
 
         # Create Stacked Widget for holding multiple pages
         self.stackedLayout: QStackedLayout = QStackedLayout()
@@ -501,17 +475,8 @@ class MainWindow(QWidget):  # type: ignore
 
         noteWindowElementLayout: QVBoxLayout = QVBoxLayout()
         noteWindowElementLayout.addLayout(statusRowLayout)
-        self.noteTagsLabel = QLabel("Tags")
-        self.noteTagsLabel.setFont(QFont("Arial", 14, QFont.Bold))
-        self.noteTagsBox = FlowLayout()
-        self.noteTagsContainer = QWidget()
-        self.noteTagsContainer.setLayout(self.noteTagsBox)
-        self.noteTagsContainer.setStyleSheet("background-color: transparent;")
-        
         noteWindowElementLayout.addWidget(self.titleInput)
         noteWindowElementLayout.addWidget(self.editableContentText)
-        noteWindowElementLayout.addWidget(self.noteTagsLabel)
-        noteWindowElementLayout.addWidget(self.noteTagsContainer)
 
         self.notePage.setLayout(noteWindowElementLayout)
 
@@ -529,67 +494,11 @@ class MainWindow(QWidget):  # type: ignore
         if not logoPixmap.isNull():
             self.logoLabel.setPixmap(logoPixmap.scaled(40, 40, Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
-        titleTextLayout = QVBoxLayout()
-
         self.homeTitleLabel = QLabel("Synapse")
         self.homeTitleLabel.setFont(QFont("Arial", 24, QFont.Bold))
 
-        self.catchphraseLabel = QLabel("Smart tag your notes")
-        self.catchphraseLabel.setFont(QFont("Arial", 11))
-        self.catchphraseLabel.setStyleSheet("color: #333333;")
-
-        titleTextLayout.addWidget(self.homeTitleLabel)
-        titleTextLayout.addWidget(self.catchphraseLabel)
-
         logoTitleLayout.addWidget(self.logoLabel)
-        logoTitleLayout.addLayout(titleTextLayout)
-
-        # ---------------- SEARCH BAR ----------------
-        self.searchInput = QLineEdit()
-        self.searchInput.setPlaceholderText("Search notes...")
-        self.searchInput.setFixedWidth(300)
-        self.searchInput.setFixedHeight(42)
-        self.searchInput.setStyleSheet("""
-            QLineEdit {
-                background-color: black;
-                color: #A5F3FF;
-                border-radius: 16px;
-                padding: 8px 16px;
-                font-size: 15px;
-                font-weight: bold;
-            }
-        """)
-        self.searchInput.textChanged.connect(self.displayNotesOnHome)
-
-        self.searchModeButton = QPushButton("Name ⌄")
-        self.searchModeButton.setFixedHeight(42)
-        self.searchModeButton.setStyleSheet("""
-            QPushButton {
-                background-color: black;
-                color: #A5F3FF;
-                border-radius: 14px;
-                padding: 6px 14px;
-                font-size: 14px;
-                font-weight: bold;
-                border: none;
-            }
-        """)
-        self.searchModeButton.clicked.connect(self.toggleSearchMode)
-
-        self.refreshHomeButton = QPushButton("Refresh")
-        self.refreshHomeButton.setFixedHeight(42)
-        self.refreshHomeButton.setStyleSheet("""
-            QPushButton {
-                background-color: black;
-                color: #A5F3FF;
-                border-radius: 14px;
-                padding: 6px 14px;
-                font-size: 14px;
-                font-weight: bold;
-                border: none;
-            }
-        """)
-        self.refreshHomeButton.clicked.connect(self.displayNotesOnHome)        
+        logoTitleLayout.addWidget(self.homeTitleLabel)
 
         # Right: Sort Controls
         sortLabel = QLabel("Sort by")
@@ -618,14 +527,6 @@ class MainWindow(QWidget):  # type: ignore
         # Assemble the Top Bar
         self.topBarLayout.addLayout(logoTitleLayout)
         self.topBarLayout.addStretch()
-
-        self.topBarLayout.addWidget(self.searchInput)
-        self.topBarLayout.addSpacing(10)
-        self.topBarLayout.addWidget(self.searchModeButton)
-        self.topBarLayout.addSpacing(15)
-        self.topBarLayout.addWidget(self.refreshHomeButton)
-        self.topBarLayout.addSpacing(20)
-
         self.topBarLayout.addWidget(sortLabel)
         self.topBarLayout.addSpacing(15)
         self.topBarLayout.addWidget(self.sortContainer)
@@ -655,36 +556,6 @@ class MainWindow(QWidget):  # type: ignore
         # ---------------- STACK ----------------
         self.stackedLayout.addWidget(self.homePage)
         self.stackedLayout.addWidget(self.notePage)
-
-        # NEW: Create Settings Page
-        self.settingsPage: QWidget = QWidget()
-
-        # Settings page back button
-        self.settingsBackButton = QPushButton("← Back to Main")
-        self.settingsBackButton.setStyleSheet("border: None; text-align: left; color: black;")        
-        settingsBackFont: QFont = QFont("Arial", 13)
-        self.settingsBackButton.setFont(settingsBackFont)
-        self.settingsBackButton.clicked.connect(self.goToMainScreen)
-
-        # Settings page title label
-        self.settingsTitleLabel = QLabel("Settings")
-        settingsTitleFont: QFont = QFont("Arial", 26)
-        self.settingsTitleLabel.setFont(settingsTitleFont)
-        self.settingsTitleLabel.setStyleSheet("border: None;")
-
-        # Settings page layout (empty — no settings added yet)
-        settingsPageLayout: QVBoxLayout = QVBoxLayout()
-        settingsPageLayout.addWidget(self.settingsBackButton)
-        settingsPageLayout.addWidget(self.settingsTitleLabel)
-        settingsPageLayout.addStretch(1)
-
-        self.settingsPage.setLayout(settingsPageLayout)
-
-        # Add settings page to stacked layout
-        self.stackedLayout.addWidget(self.settingsPage)
-
-        
-        # adding stacked layout to mainScreen
         self.setLayout(self.stackedLayout)
 
         # ---------------- FLOATING NEW NOTE BUTTON ----------------
@@ -748,8 +619,6 @@ class MainWindow(QWidget):  # type: ignore
         self.editableContentText.clear()
         self.statusLabel.setText("")
         self.stackedLayout.setCurrentIndex(Page.NOTE.value)
-        self.newNoteButton.raise_()
-        self.displayTagsOnNotePage()
 
     def goToMainScreen(self) -> None:
         """Return to home page and refresh note cards."""
@@ -757,27 +626,11 @@ class MainWindow(QWidget):  # type: ignore
         self.currentNoteId = None
         self.stackedLayout.setCurrentIndex(Page.HOME.value)
         self.newNoteButton.raise_()
-        
-        # NEW: Navigate to settings page
-    def goToSettingsPage(self) -> None:
-        self.stackedLayout.setCurrentIndex(Page.SETTINGS.value)
-        self.newNoteButton.raise_()
 
     def changeSortOrder(self, mode: str) -> None:
         """Updates the active sort mode and refreshes the grid."""
         self.currentSortMode = mode
         self.updateSortButtonStyles()
-        self.displayNotesOnHome()
-
-    def toggleSearchMode(self) -> None:
-        """Toggle search mode between note title/content and tag."""
-        if self.currentSearchMode == "name":
-            self.currentSearchMode = "tag"
-            self.searchModeButton.setText("Tag ⌄")
-        else:
-            self.currentSearchMode = "name"
-            self.searchModeButton.setText("Name ⌄")
-
         self.displayNotesOnHome()
 
     def updateSortButtonStyles(self) -> None:
@@ -826,20 +679,6 @@ class MainWindow(QWidget):  # type: ignore
             # Grid positioning coordinates
             row = 0
             col = 0
-
-            searchText = self.searchInput.text().strip().lower()
-
-            if searchText:
-                if self.currentSearchMode == "tag":
-                    allNotes = [
-                        note for note in allNotes
-                        if any(searchText in tag[1].lower() for tag in (self.getTags(note[0]) or []))
-                    ]
-                else:
-                    allNotes = [
-                        note for note in allNotes
-                        if searchText in note[1].lower() or searchText in note[2].lower()
-                    ]
 
             # sorts notes accordingly
             if self.currentSortMode == "name":
@@ -898,9 +737,16 @@ class MainWindow(QWidget):  # type: ignore
 
                 # Add overflow menu
                 noteMenu: QMenu = QMenu(self)
+                # Add tag management
                 addRemoveTag: QAction = QAction("Add/Remove Tag", self)
                 addRemoveTag.triggered.connect(lambda _, id=noteId: self.showTagWindow(id))
+
+                # Add delete button
+                deleteNote: QAction = QAction("Delete Note", self)
+                deleteNote.triggered.connect(lambda _, id = noteId: self.deleteNoteFunction(id))
+
                 noteMenu.addAction(addRemoveTag)
+                noteMenu.addAction(deleteNote)
                 noteMenu.setLayoutDirection(Qt.RightToLeft)
 
                 # Add overflow menu button
@@ -913,7 +759,7 @@ class MainWindow(QWidget):  # type: ignore
                 tagLayout: QHBoxLayout = QHBoxLayout()
                 tags: list[tuple] | dict[str, str] | None = self.getTags(noteId) # type: ignore [type-arg]
                 widthCounter: int = 0
-                for tag in (tags or []): # type: ignore [union-attr]
+                for tag in tags: # type: ignore [union-attr]
                     tagBox: QFrame = QFrame()
                     ellipsisBox: QFrame = QFrame()
                     oldWidthCounter: int = widthCounter
@@ -984,7 +830,6 @@ class MainWindow(QWidget):  # type: ignore
                 if col >= self.mainPageColumnMax:
                     col = 0
                     row += 1
-                self.newNoteButton.raise_()                
 
     #for showing and hiding the note menu
     def showMenu(self, menu:QMenu, button: QPushButton)->None:
@@ -998,33 +843,10 @@ class MainWindow(QWidget):  # type: ignore
             noteTitle:str = result[1]
             noteContent:str = result[2]
             self.currentNoteId = clickedId
-            self.displayTagsOnNotePage()
             self.statusLabel.setText("")
 
-            self.titleInput.setPlaceholderText("Type note title here...")
-            self.titleInput.setStyleSheet("""
-                QTextEdit   {
-                                          background-color: rgba(255, 255, 255, 0.35);
-                                          border: 2px solid rgba(0,0,0,0.15);
-                                          border-radius: 14px;
-                                          padding: 10px;
-                             }
-                                          """)
-            
             self.titleInput.setText(noteTitle)
             self.editableContentText.setText(noteContent)
-            self.editableContentText.setPlaceholderText("Type your note here...")
-            self.editableContentText.setStyleSheet("""
-                QTextEdit {
-                    background-color: rgba(255, 255, 255, 0.35);
-                    border: 2px solid rgba(0, 0, 0, 0.15);
-                    border-radius: 14px;
-                    padding: 12px;
-                }
-            """)
-
-
-            
             self.statusLabel.setText("")
             self.stackedLayout.setCurrentIndex(Page.NOTE.value)
 
@@ -1047,7 +869,6 @@ class MainWindow(QWidget):  # type: ignore
         else:
             self.statusLabel.setText(saveResult)
             self.currentNoteId = int("".join(filter(str.isdigit, saveResult)))
-            self.displayTagsOnNotePage()
             self.displayNotesOnHome()
 
     def onAnalyzeNoteClicked(self) -> None:
@@ -1077,7 +898,6 @@ class MainWindow(QWidget):  # type: ignore
             databaseName
         )
 
-        print(result)
         if isinstance(result, dict):
             summary = result.get("summary", "")
             mood = result.get("mood", "")
@@ -1088,7 +908,7 @@ class MainWindow(QWidget):  # type: ignore
             QMessageBox.information(
                 self,
                 "Note Analysis",
-                f"Analyzed with SmolLM3-3B\n\nSummary: {summary}\n\nMood: {mood}\n\nTags: {', '.join(tags) if isinstance(tags, list) else ''}"
+                f"Summary: {summary}\n\nMood: {mood}\n\nTags: {', '.join(tags) if isinstance(tags, list) else ''}"
             )
         else:
             self.statusLabel.setText("Analyze failed")
@@ -1096,65 +916,30 @@ class MainWindow(QWidget):  # type: ignore
     def showTagWindow(self, clickedId:int)->None:
         self.newTagWindow.setCurrentNoteId(clickedId)
         self.newTagWindow.show()
-        self.displayTagsOnNotePage()
 
-    def displayTagsOnNotePage(self) -> None:
-        clearLayout(self.noteTagsBox)
-
-        if self.currentNoteId is None:
-            self.noteTagsLabel.setText("Tags: save this note to add tags")
-            return
-
-        self.noteTagsLabel.setText("Tags")
-
-        tags = self.getTags(self.currentNoteId) or []
-
-        if not tags:
-            noTagsLabel = QLabel("No tags yet")
-            noTagsLabel.setStyleSheet("color: #333333;")
-            self.noteTagsBox.addWidget(noTagsLabel)
-            return
-
-        for tag in tags:
-            tagBox = QFrame()
-            tagBox.setStyleSheet("""
-                QFrame {
-                    background-color: #000000;
-                    border-radius: 16px;
-                }
-            """)
-
-            tagLabel = QLabel(tag[1])
-            tagLabel.setStyleSheet("color: #A5F3FF;")
-
-            tagLayout = QHBoxLayout()
-            tagLayout.addWidget(tagLabel)
-            tagBox.setLayout(tagLayout)
-
-            self.noteTagsBox.addWidget(tagBox)
-
-    def getTags(self, noteId: int) -> list[tuple] | None:
-        tagAssociations = tagLogic.getTagAssociationsHandler(noteId, databaseName)
-
-        if isinstance(tagAssociations, dict):
+    def getTags(self, noteId: int)->list[tuple] | dict[str, str] | None: # type: ignore [type-arg]
+        tagAssociations:list[tuple] | dict[str, str] = tagLogic.getTagAssociationsHandler(noteId, databaseName) # type: ignore [type-arg]
+        if type(tagAssociations) == dict[str, str]:
             QMessageBox.critical(self, tagAssociations["title"], tagAssociations["msg"])
             return None
-
-        getSelectedTagsResponse = tagLogic.getSelectedTagsHandler(
-            [assoc[1] for assoc in tagAssociations],
-            databaseName
-        )
-
-        if isinstance(getSelectedTagsResponse, dict):
+        getSelectedTagsResponse: list[tuple] | dict[str, str] = tagLogic.getSelectedTagsHandler([assoc[2] for assoc in tagAssociations], databaseName) # type: ignore [type-arg]
+        if type(getSelectedTagsResponse) == dict[str,str]:
             QMessageBox.critical(self, getSelectedTagsResponse["title"], getSelectedTagsResponse["msg"])
             return None
-
         return getSelectedTagsResponse
 
-    def sortByTag(self, tags: list[tuple] | None):
-        if tags:
+    def sortByTag(self, tags: list[tuple]): # type: ignore [type-arg, no-untyped-def]
+        if tags != []:
             return tags[0][1]
         return chr(255)
+    
+    def deleteNoteFunction(self, noteId: int) -> None:
+        reply = QMessageBox.question(self, "Delete Note", "Are you sure you want to delete this note",  QMessageBox.Yes | QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            result = noteLogic.deleteNoteHandler(noteId, databaseName)
+            if result is not None:
+                QMessageBox.critical(self, result["title"], result["msg"])
+            self.displayNotesOnHome()
 
 
 def runApp() -> int:

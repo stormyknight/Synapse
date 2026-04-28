@@ -219,6 +219,7 @@ def deleteNoteHandler(noteId: int, databaseName: str) -> None | dict[str, str]:
     dbPath = generalDbFunctions.getDbPath(databaseName)
 
     if not os.path.exists(dbPath):
+        print(1)
         return {
             "title": "Database Missing",
             "msg": f"Database '{databaseName}' not found.\nRun setup_database.py first."
@@ -233,4 +234,5 @@ def deleteNoteHandler(noteId: int, databaseName: str) -> None | dict[str, str]:
         finally:
             conn.close()
     except sqlite3.Error as exc:
+        print(exc)
         return  {"title": "Database Error", "msg": f"SQLite error:\n{exc}"}
