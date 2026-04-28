@@ -1085,6 +1085,11 @@ class MainWindow(QWidget):  # type: ignore
 
             self.statusLabel.setText("Analysis saved")
 
+            # refresh tags after LLM/AI analysis
+            self.displayTagsOnNotePage()
+            self.displayNotesOnHome()
+            self.newNoteButton.raise_()
+
             QMessageBox.information(
                 self,
                 "Note Analysis",
