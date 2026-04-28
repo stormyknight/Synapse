@@ -108,7 +108,7 @@ def getTagsHandler( databaseName:str)->list[tuple]|dict[str,str]: # type: ignore
         return  {"title": "Database Error", "msg": f"SQLite error:\n{exc}"}
 
 
-def removeTagAssociationHandler(databaseName:str, tagAssociationId: int)->None | dict[str,str]:
+def removeTagAssociationHandler(databaseName: str, noteId: int, tagId: int) -> None | dict[str, str]:
     dbPath = generalDbFunctions.getDbPath(databaseName)
     if not os.path.exists(dbPath):
         return {
@@ -120,7 +120,7 @@ def removeTagAssociationHandler(databaseName:str, tagAssociationId: int)->None |
         try:
 
             cursor = conn.cursor()
-            tagDbFunctions.removeTagAssociation(cursor, tagAssociationId)
+            tagDbFunctions.removeTagAssociation(cursor, noteId, tagId)
             conn.commit()
         finally:
             conn.close()
