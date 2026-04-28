@@ -98,7 +98,7 @@ def test_exitButton()->None:
 def test_adjustMainPageColumnMax()->None:
     testMainScreen: mainScreen.MainWindow = mainScreen.MainWindow()
     originalColumnNumber: int = testMainScreen.mainPageColumnMax
-    testMainScreen.resize(700, 500)
+    testMainScreen.resize(2000, 500)
     testMainScreen.adjustMainPageColumnMax()
     newColumnNumber: int = testMainScreen.mainPageColumnMax
     assert originalColumnNumber != newColumnNumber
@@ -145,9 +145,11 @@ def test_success_getTagName(mock_showCurrentTags, mock_associateTagWithNoteHandl
 @patch("src.guiModule.mainScreen.QInputDialog.getText")
 @patch("src.guiModule.mainScreen.tagLogic.createTagHandler")
 @patch("src.guiModule.mainScreen.QMessageBox.critical")
-def test_fail_associateTag_getTagName(mock_critical, mock_createTagHandler, mock_getText) -> None: # type: ignore[no-untyped-def]
+@patch("src.guiModule.mainScreen.tagLogic.associateTagWithNoteHandler")
+def test_fail_associateTag_getTagName(mock_associateTagHandler, mock_critical, mock_createTagHandler, mock_getText) -> None: # type: ignore[no-untyped-def]
     mock_getText.return_value = ("test", True)
     mock_createTagHandler.return_value = 1
+    mock_associateTagHandler.return_value = {"title": "", "msg": ""}
 
     testMainScreen: mainScreen.MainWindow = mainScreen.MainWindow()
     testTagWindow: mainScreen.TagWindow = mainScreen.TagWindow(testMainScreen)
@@ -371,3 +373,22 @@ def test_showTagWindow(mock_show) -> None: # type: ignore[no-untyped-def]
     testMainScreen: mainScreen.MainWindow = mainScreen.MainWindow()
     testMainScreen.showTagWindow(1)
     mock_show.assert_called()
+
+
+@patch("src.guiModule.mainScreen.QMessageBox.question")
+def test_success_deleteNoteFunction(mock_question) -> None: # type: ignore[no-untyped-def]
+    testMainScreen: mainScreen.MainWindow = mainScreen.MainWindow()
+    testMainScreen.deleteNoteFunction(1)
+
+    mock_question.assert_called()
+
+
+@patch("src.guiModule.mainScreen.noteLogic.deleteNoteHandler")
+@patch("src.guiModule.mainScreen.QMessageBox.critical")
+def test_faile_deleteNoteFunction(mock_critical, mock_deleteNoteHandler) -> None: # type: ignore[no-untyped-def]
+    testMainScreen: mainScreen.MainWindow = mainScreen.MainWindow()
+    testMainScreen.deleteNoteFunction(1)
+
+    mock_deleteNoteHandler.return_value = {"title": "", "msg": ""}
+
+    mock_critical.assert_called()

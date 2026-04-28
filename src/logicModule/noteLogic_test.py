@@ -273,7 +273,7 @@ def test_success_analyzeAndStoreNote(mock_LLM_Helper, mock_dbFunctions, mock_con
 @patch("src.logicModule.noteLogic.generalDbFunctions")
 @patch("src.logicModule.noteLogic.LLM_Helper")
 def test_fail_noTags_analyzeAndStoreNote(mock_LLM_Helper, mock_dbFunctions, mock_connection, mock_path) -> None: # type: ignore[no-untyped-def]
-     # mock exists return
+    # mock exists return
     mock_path.exists = MagicMock()
     mock_path.exists.return_value = True
 
@@ -291,3 +291,28 @@ def test_fail_noTags_analyzeAndStoreNote(mock_LLM_Helper, mock_dbFunctions, mock
     mock_LLM_Helper.analyzeNote.return_value = {"summary": "", "mood": "", "tags": [""]}
 
     assert noteLogic.analyzeAndStoreNote(1, "content", ":memory:") == {"summary": "", "mood": "", "tags": [""]}
+
+
+# pylint: disable=invalid-name
+@patch("src.logicModule.noteLogic.os.path")
+@patch("src.logicModule.noteLogic.sqlite3.Connection")
+@patch("src.logicModule.noteLogic.generalDbFunctions")
+@patch("src.logicModule.noteLogic.noteDbFunctions")
+def test_success_deleteNoteHandler(mock_noteDbFunctions, mock_dbFunctions, mock_connection, mock_path) -> None: # type: ignore[no-untyped-def]
+    # mock exists return
+    mock_path.exists = MagicMock()
+    mock_path.exists.return_value = True
+
+    # mock cursor function
+    dummyCursor = MagicMock(spec=sqlite3.Cursor)
+    mock_connection.cursor = MagicMock()
+    mock_connection.cursor.return_value = dummyCursor
+
+    # mock connectDb
+    mock_dbFunctions.connectDb = MagicMock()
+    mock_dbFunctions.connectDb.return_value = mock_connection
+
+    # mock deleteNote
+    mock_noteDbFunctions.deleteNote.return_value = None
+
+    assert noteLogic.deleteNoteHandler(1, ":memory:") is None
