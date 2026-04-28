@@ -287,7 +287,9 @@ class TagWindow(QWidget): # type: ignore
 
         # iterate through both tags and tag-note associations to display tags associated notes
         if type(associatedTags) is not dict and type(tagAssociations) is not dict:
-            for tag, assoc in zip(associatedTags, tagAssociations):
+            for tag in associatedTags:
+                noteId = self.currentNoteId
+                tagId = tag[0]
                 # create box to display individual tags
                 tagBox: QFrame = QFrame()
                 tagBox.setStyleSheet(("""
@@ -310,7 +312,7 @@ class TagWindow(QWidget): # type: ignore
                 removeTagButton.setStyleSheet("color: #A5F3FF;" \
                 "background-color: #000000")
                 removeTagButton.setFixedSize(24,24)
-                removeTagButton.clicked.connect(lambda _, nid=assoc[0], tid=assoc[1]: self.removeTag(nid, tid))
+                removeTagButton.clicked.connect(lambda _, nid=noteId, tid=tagId: self.removeTag(nid, tid))
 
                 # adding components to tag box
                 tagBoxLayout.addWidget(tagBoxLabel)
